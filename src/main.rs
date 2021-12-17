@@ -7,16 +7,21 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
-use std::convert::{TryInto, TryFrom};
+use std::convert::TryInto;
+//use std::convert::TryFrom;
 use std::sync::Arc;
 use std::io::{Write, Read, stdout};
 use websocket::ws::Message;
 //use std::io;
 
+mod qc;
+
 struct Player {
 	x: i32,
 	y: i32,
 }
+
+struct Enemy { x: i32, y: i32, }
 
 /* i am not entirely convinced
    that the song sunny came home
@@ -62,7 +67,7 @@ fn sus_socket(consid: String) -> websocket::client::sync::Client<native_tls::Tls
 	let mut client = websocket::ClientBuilder::new("wss://ostracodapps.com:2626/gameUpdate")
 		.unwrap().custom_headers(&headers_owo)
 		.connect_secure(Some(connector)).unwrap();
-	let message = websocket::Message::text("[{\"commandName\": \"startPlaying\"},{\"commandName\": \"getTiles\", \"size\": 31},{\"commandName\":\"assertPos\", \"pos\":{\"x\":0,\"y\":0}}]");
+	let message = websocket::Message::text("[{\"commandName\": \"startPlaying\"},{\"commandName\": \"getTiles\", \"size\": 31},{\"commandName\":\"assertPos\", \"pos\":{\"x\":0,\"y\":0}}, {\"commandName\": \"getEntities\"}]");
 	client.send_message(&message).unwrap();
 	//println!("{}", client.buffered_read_size().unwrap());
 //	let resp = client.recv_message().unwrap();
@@ -121,15 +126,19 @@ fn lop(mut tcpclient: websocket::client::sync::Client<native_tls::TlsStream<std:
 	let mut event_pump = sdl_context.event_pump().unwrap();
 	let mut tile_arr: [u8; 128*128] = [60; 128*128];
 	let mut player: Player = Player {x: 0, y: 0};
+	let mut enemies: Vec<Enemy> = Vec::new();
+	let mut command_vec: Vec<String> = Vec::new();
 	'running: loop {
-		i = i + 1;
-		let j:u8 = (i % 256) as u8;
-		canvas.set_draw_color(Color::RGB(0,0,0));
-		canvas.clear();
-		canvas.set_draw_color(Color::RGB(j, 64, 255 - j));
-		let r = sdl2::rect::Rect::new(i%256,(i/2)%500, 100,100);
-		canvas.fill_rect(Some(r)).ok();
-		draw(&mut canvas, tile_arr, &player);
+		if i % 32 == 0 {
+			qc::get_entities(&mut command_vec);
+		}
+//		let j:u8 = (i % 256) as u8;
+//		canvas.set_draw_color(Color::RGB(0,0,0));
+//		canvas.clear();
+//		canvas.set_draw_color(Color::RGB(j, 64, 255 - j));
+//		let r = sdl2::rect::Rect::new(i%256,(i/2)%500, 100,100);
+//		canvas.fill_rect(Some(r)).ok();
+		draw(&mut canvas, tile_arr, &player, &enemies);
 		for event in event_pump.poll_iter() {
 			match event {
 				Event::Quit {..} |
@@ -143,15 +152,25 @@ fn lop(mut tcpclient: websocket::client::sync::Client<native_tls::TlsStream<std:
 //		::std::thread::sleep(Duration::new(0, 1000000000u32 / 60));
 //		::std::thread::sleep(Duration::new(0, 16666000u32));
 		::std::thread::sleep(Duration::new(0, 1000000000u32 / 32));
-		for message in tcpclient.incoming_messages() {
-			if message.is_err() {
-				break;
-			}
+		'message_loop: for message in tcpclient.incoming_messages() {
+			let message = match message {
+				Ok(m) => m,
+				Err(e) => {break 'message_loop;}
+			};
+			let vecstr = match message {
+				websocket::OwnedMessage::Text(stri) => stri,
+				_ => {break 'message_loop;}
+			};
 //			println!("{:?}", message);
-			let mut strr: Vec<u8> = Vec::new();
-			message.unwrap().serialize(&mut strr, false).unwrap();
+//			let mut strr: Vec<u8> = Vec::new();
+//			message.unwrap().serialize(&mut strr, false).unwrap();
 //			println!("{:?}", strr);
-			let vecstr = String::from_utf8((&strr[4..]).to_vec()).unwrap();
+//			for i in 0..message.unwrap().payload.len() {
+//				strr.push(message.unwrap().payload[i]);
+//			}
+//			let vecstr = String::from_utf8((&strr[0..]).to_vec()).unwrap();
+//			let vecstr = String::from(message.unwrap());
+			println!("{:?}", vecstr);
 			let respdata = json::parse(&vecstr).unwrap();
 /*			println!("{:?}", respdata);
 			println!("{:?}", respdata.dump());
@@ -165,10 +184,17 @@ fn lop(mut tcpclient: websocket::client::sync::Client<native_tls::TlsStream<std:
 				} else if ty.eq("setLocalPlayerPos") {
 					player.x = command["pos"]["x"].as_i32().unwrap();
 					player.y = command["pos"]["y"].as_i32().unwrap();
+				} else if ty.eq("addEntity") {
+					cq_add_entity(command, &mut enemies);
+				} else if ty.eq("removeAllEntities") {
+					enemies = Vec::new();
 				}
 			}
 		}
 //		println!("{:?}", tcpclient.into_stream());
+		i = i + 1;
+		qc::send_commands(&mut tcpclient, &command_vec);
+		command_vec = Vec::new();
 	}
 }
 
@@ -206,6 +232,13 @@ fn cq_set_tiles(command: &json::JsonValue, tile_arr: &mut [u8; 128*128]) {
 	}
 }
 
+fn cq_add_entity(command: &json::JsonValue, enemies: &mut Vec<Enemy>) {
+	enemies.push(Enemy {
+		x: command["entityInfo"]["pos"]["x"].as_i32().unwrap(),
+		y: command["entityInfo"]["pos"]["y"].as_i32().unwrap(),
+		});
+}
+
 fn get_tile_at_relpos(player: &Player, xrel: i32, yrel: i32, tile_arr: [u8; 128*128]) -> u8 {
 	let x = (player.x + xrel) & 127;
 	let y = (player.y + yrel) & 127;
@@ -213,7 +246,7 @@ fn get_tile_at_relpos(player: &Player, xrel: i32, yrel: i32, tile_arr: [u8; 128*
 	return tile_arr[i];
 }
 
-fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, tile_arr: [u8; 128*128], player: &Player) {
+fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, tile_arr: [u8; 128*128], player: &Player, enemies: &Vec<Enemy>) {
 //	let mut i = 0;
 //	for x in 0..128 {
 //		for y in 0..128 {
@@ -223,8 +256,9 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, tile_arr: [u8; 1
 //			i = i + 1;
 //		}
 //	}
-	for y in -30..30 {
-		for x in -30..30 {
+	let shsize: i32 = 30;
+	for y in -shsize..shsize {
+		for x in -shsize..shsize {
 			let tile = get_tile_at_pos(player.x + x, player.y + y, tile_arr);
 			if tile >= 0x80 && tile <= 0x89 {
 				canvas.set_draw_color(Color::RGB(
@@ -234,7 +268,16 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, tile_arr: [u8; 1
 			} else {
 				canvas.set_draw_color(Color::RGB(tile, tile, tile));
 			}
-			let r = sdl2::rect::Rect::new((x + 30) * 8, (y + 30) * 8, 8, 8);
+			let r = sdl2::rect::Rect::new((x + shsize) * 8, (y + shsize) * 8, 8, 8);
+			canvas.fill_rect(Some(r)).ok();
+		}
+	}
+	canvas.set_draw_color(Color::RGB(0,0,0));
+	for enemy in enemies {
+		let relx = enemy.x - player.x;
+		let rely = enemy.y - player.y;
+		if relx.abs() < shsize && rely.abs() < shsize {
+			let r = sdl2::rect::Rect::new((relx + shsize) * 8 + 1, (rely + shsize) * 8 + 1, 6, 6);
 			canvas.fill_rect(Some(r)).ok();
 		}
 	}
