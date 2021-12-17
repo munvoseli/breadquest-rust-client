@@ -1,3 +1,5 @@
+Crust - BreadQuest client written in Rust
+
 do `cargo run` in this directory
 it has to be in the same directory as the config.txt file
 
