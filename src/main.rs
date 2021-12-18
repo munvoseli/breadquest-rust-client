@@ -108,16 +108,6 @@ fn lop() {
 			},
 			Err(_) => {}
 		}}
-/*		// check on the futures
-		for boxfuttls in future_players {
-			match std::pin::Pin::new(&mut *boxfuttls).poll() {
-				std::task::Poll::Pending => {},
-				std::task::Poll::Ready(val) => {
-					println!("{}", val);
-				}
-			}
-		}
-*/
 		// now do things for each player
 		for mut player in &mut players {
 		draw(&mut canvas, &player);
