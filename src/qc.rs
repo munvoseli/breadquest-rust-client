@@ -5,6 +5,7 @@ pub fn send_commands(
 	command_vec: &Vec<String>
 	) {
 	if command_vec.len() == 0 {return;}
+	println!("Sending commands...");
 	let mut comstr = "[".to_string();
 	comstr.push_str(command_vec[0].as_str());
 	for i in 1..command_vec.len() {

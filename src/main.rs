@@ -63,25 +63,25 @@ fn lop() {
 //	let tcpclient = login_socket(infostr.0, infostr.1);
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
-	let window = video_subsystem.window("h", 1800, 600)
+	let window = video_subsystem.window("h", 1440, 960)
 	.position_centered().build().unwrap();
 	let mut canvas = window.into_canvas().build().unwrap();
 	let mut i:i32 = 0;
 	let mut event_pump = sdl_context.event_pump().unwrap();
 	let mut players: Vec<Player> = Vec::new();
 	let infvec = get_login_name();
+	let mut player_sockets: Vec<std::sync::mpsc::Receiver<websocket::client::sync::Client<native_tls::TlsStream<std::net::TcpStream>>>> = Vec::new();
 	for i in 0..(infvec.len() / 2) {
-		let user = &infvec[i * 2];
-		let pass = &infvec[i * 2 + 1];
-		let tcpclient = signin::login_socket(user.to_string(), pass.to_string());
-		let mut player = Player {pindex: i as i32, x: 0, y: 0, user: user.to_string(), tile_arr: [60; 128*128], enemies: Vec::new(), comque: Vec::new(), tcp: tcpclient};
-		qc::initial_commands(&mut player.comque);
-		println!("Set up player {}", player.user);
-		players.push(player);
+		let (tx, rx) = std::sync::mpsc::channel();
+		let user = infvec[i * 2].to_string();
+		let pass = infvec[i * 2 + 1].to_string();
+		thread::spawn(move || {
+			let tcpclient = signin::login_socket(user, pass);
+			tx.send(tcpclient).unwrap();
+		});
+		player_sockets.push(rx);
 	}
-//	let mut future_players: Vec<Box<dyn Future<Output=websocket::client::sync::Client<native_tls::TlsStream<std::net::TcpStream>>>>> = Vec::new();
-//	let infostr = get_login_name();
-//	future_players.push(Box::new(login_socket(infostr.0, infostr.1)));
+	let mut pindex: i32 = 0;
 	'running: loop {
 		canvas.present();
 		for event in event_pump.poll_iter() {
@@ -90,10 +90,24 @@ fn lop() {
 				Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
 					break 'running
 				},
+				Event::KeyDown { keycode: Some(Keycode::W), .. } => { qc::remove_tile(&mut players[0].comque, 0); },
+				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::remove_tile(&mut players[0].comque, 1); },
+				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::remove_tile(&mut players[0].comque, 2); },
+				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::remove_tile(&mut players[0].comque, 3); },
 				_ => {}
 			}
 		}
 
+		for rx in &player_sockets { match rx.try_recv() { // websocket::client::sync::Client<native_tls::TlsStream<std::net::TcpStream>>
+			Ok(tcpclient) => {
+				let mut player = Player {pindex: pindex, x: 0, y: 0, user: "fluttershy".to_string(), tile_arr: [60; 128*128], enemies: Vec::new(), comque: Vec::new(), tcp: tcpclient};
+				qc::initial_commands(&mut player.comque);
+				println!("Set up player {}", player.user);
+				players.push(player);
+				pindex = pindex + 1;
+			},
+			Err(_) => {}
+		}}
 /*		// check on the futures
 		for boxfuttls in future_players {
 			match std::pin::Pin::new(&mut *boxfuttls).poll() {
@@ -109,6 +123,7 @@ fn lop() {
 		draw(&mut canvas, &player);
 		if i % 64 == 0 {
 			qc::get_entities(&mut player.comque);
+			qc::get_tiles(&mut player.comque);
 		}
 		'message_loop: for message in player.tcp.incoming_messages() {
 			let message = match message {
@@ -123,7 +138,10 @@ fn lop() {
 			let respdata = json::parse(&vecstr).unwrap();
 			for command in respdata["commandList"].members() {
 				let typ:&str = command["commandName"].as_str().unwrap();
-				println!("{} {:?}\n", player.user, command.dump());
+				println!("{} {}", player.user, typ);
+				/*
+					println!("{}", command.dump());
+				*/
 				let ty = String::from(typ);
 				if ty.eq("setTiles") {
 					cq_set_tiles(command, &mut player.tile_arr);
@@ -134,6 +152,8 @@ fn lop() {
 					cq_add_entity(command, &mut player.enemies);
 				} else if ty.eq("removeAllEntities") {
 					player.enemies = Vec::new();
+				} else if ty.eq("setLocalPlayerInfo") {
+					player.user = command["username"].as_str().unwrap().to_string();
 				}
 			}
 		}
@@ -204,10 +224,11 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player)
 //			i = i + 1;
 //		}
 //	}
-	let shsize: i32 = 25;
-	for y in -shsize..shsize {
-		for x in -shsize..shsize {
-			let tile = get_tile_at_pos(player.x + x, player.y + y, player.tile_arr);
+	let ssize: i32 = 60;
+	let shsize: i32 = ssize >> 1;
+	for y in 0..ssize {
+		for x in 0..ssize {
+			let tile = get_tile_at_pos(player.x + x - shsize, player.y + y - shsize, player.tile_arr);
 			if tile >= 0x80 && tile <= 0x89 {
 				canvas.set_draw_color(Color::RGB(
 							[255,255,255,255,  0,  0,  0,255,170][tile as usize - 0x80],
@@ -216,7 +237,7 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player)
 			} else {
 				canvas.set_draw_color(Color::RGB(tile, tile, tile));
 			}
-			let r = sdl2::rect::Rect::new((x + shsize + 60 * player.pindex) * 8, (y + shsize) * 8, 8, 8);
+			let r = sdl2::rect::Rect::new((x + 60 * (player.pindex % 3)) * 8, (y + 60 * (player.pindex / 3)) * 8, 8, 8);
 			canvas.fill_rect(Some(r)).ok();
 		}
 	}
@@ -225,7 +246,7 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player)
 		let relx = enemy.x - player.x;
 		let rely = enemy.y - player.y;
 		if relx.abs() < shsize && rely.abs() < shsize {
-			let r = sdl2::rect::Rect::new((relx + shsize + 60 * player.pindex) * 8 + 1, (rely + shsize) * 8 + 1, 6, 6);
+			let r = sdl2::rect::Rect::new((relx + shsize + 60 * (player.pindex % 3)) * 8 + 1, ((rely + shsize + 60 * (player.pindex / 3))) * 8 + 1, 6, 6);
 			canvas.fill_rect(Some(r)).ok();
 		}
 	}

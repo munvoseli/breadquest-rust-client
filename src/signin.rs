@@ -59,12 +59,16 @@ fn login(user: String, pass: String) -> String {
 	let ciphersuite = tls.conn.negotiated_cipher_suite().unwrap();
 	println!("Current ciphersuite: {:?}", ciphersuite.suite());
 	let mut pt = Vec::new();
+	println!("Waiting for post request");
 	tls.read_to_end(&mut pt).unwrap();
 //	stdout().write_all(&pt).unwrap();
 //	println!();
 
 	let strig = String::from_utf8(pt).unwrap();
 	let considn = strig.find("set-cookie").unwrap() + 12;
+	let considm = &strig[considn..].find("\n").unwrap();
+	let concookie = (&strig[considn..considn+considm]).to_string();
+	println!("Got cookie line {}", concookie);
 	let considm = &strig[considn..].find(";").unwrap();
 	let concookie = (&strig[considn..considn+considm]).to_string();
 	println!("Got cookie {}", concookie);
