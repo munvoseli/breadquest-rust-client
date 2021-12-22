@@ -1,7 +1,8 @@
 use std::fmt;
+use crate::Apioform;
 
 pub fn send_commands(
-	tcpclient: &mut websocket::client::sync::Client<native_tls::TlsStream<std::net::TcpStream>>,
+	apio: &mut Apioform,
 	command_vec: &Vec<String>
 	) {
 	if command_vec.len() == 0 {return;}
@@ -13,8 +14,7 @@ pub fn send_commands(
 		comstr.push_str(command_vec[i].as_str());
 	}
 	comstr.push(']');
-	let message = websocket::Message::text(comstr.as_str());
-	tcpclient.send_message(&message).unwrap();
+	apio.send(comstr);
 }
 
 pub fn get_entities(command_vec: &mut Vec<String>) {
@@ -30,11 +30,19 @@ pub fn assert_pos(command_vec: &mut Vec<String>) {
 }
 
 pub fn get_tiles(command_vec: &mut Vec<String>) {
-	command_vec.push("{\"commandName\":\"getTiles\",\"size\":31}".to_string());
+	command_vec.push("{\"commandName\":\"getTiles\",\"size\":15}".to_string());
+}
+
+pub fn add_chat_message(command_vec: &mut Vec<String>, text: String) {
+	command_vec.push(format!("{{\"commandName\":\"addChatMessage\",\"text\":\"{}\"}}", text));
 }
 
 pub fn remove_tile(command_vec: &mut Vec<String>, dir: u8) {
 	command_vec.push(format!("{{\"commandName\":\"removeTile\",\"direction\":{}}}", dir));
+}
+
+pub fn place_green_tile(command_vec: &mut Vec<String>, dir: u8) {
+	command_vec.push(format!("{{\"commandName\":\"removeTile\",\"direction\":{},\"tile\":132}}", dir));
 }
 
 pub fn initial_commands(command_vec: &mut Vec<String>) {

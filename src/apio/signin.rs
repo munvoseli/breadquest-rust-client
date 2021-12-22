@@ -1,24 +1,27 @@
 use std::io::{Write, Read};
 use websocket::header::{Headers, Cookie};
+use websocket::futures::{Future, Stream, Sink};
+use websocket::ClientBuilder;
 use std::sync::Arc;
 use std::convert::TryInto;
+use std::thread::Builder;
+//use tokio::runtime::Runtime;
 //use std::io::stdout;
 
 pub fn login_socket(user: String, pass: String) -> websocket::client::sync::Client<native_tls::TlsStream<std::net::TcpStream>> {
 	let consid = login(user, pass);
 	let tcpclient = sus_socket(consid);
-	tcpclient.set_nonblocking(true).unwrap();
+//	tcpclient.set_nonblocking(true).unwrap();
 	tcpclient
 }
 
-
 fn sus_socket(consid: String) -> websocket::client::sync::Client<native_tls::TlsStream<std::net::TcpStream>> {
-	let connector = native_tls::TlsConnector::new().unwrap();
+//	let connector = native_tls::TlsConnector::new().unwrap();
 	let mut headers_owo = Headers::new();
 	headers_owo.set(Cookie(vec![consid]));
 	let mut client = websocket::ClientBuilder::new("wss://ostracodapps.com:2626/gameUpdate")
 		.unwrap().custom_headers(&headers_owo)
-		.connect_secure(Some(connector)).unwrap();
+		.connect_secure(None).unwrap();
 	//println!("{}", client.buffered_read_size().unwrap());
 //	let resp = client.recv_message().unwrap();
 //	println!("{:?}", resp);
@@ -26,7 +29,7 @@ fn sus_socket(consid: String) -> websocket::client::sync::Client<native_tls::Tls
 
 }
 
-fn login(user: String, pass: String) -> String {
+pub fn login(user: String, pass: String) -> String {
 	let mut root_store = rustls::RootCertStore::empty();
 	root_store.add_server_trust_anchors(
 		webpki_roots::TLS_SERVER_ROOTS
@@ -68,7 +71,7 @@ fn login(user: String, pass: String) -> String {
 	let considn = strig.find("set-cookie").unwrap() + 12;
 	let considm = &strig[considn..].find("\n").unwrap();
 	let concookie = (&strig[considn..considn+considm]).to_string();
-	println!("Got cookie line {}", concookie);
+//	println!("Got cookie line {}", concookie);
 	let considm = &strig[considn..].find(";").unwrap();
 	let concookie = (&strig[considn..considn+considm]).to_string();
 	println!("Got cookie {}", concookie);
