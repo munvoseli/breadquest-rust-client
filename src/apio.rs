@@ -1,4 +1,5 @@
 use std::thread;
+use std::sync::mpsc;
 use std::convert::TryInto;
 use std::sync::Arc;
 use std::borrow::Cow;
@@ -33,13 +34,15 @@ use futures::Async;
 
 mod signin;
 
+
 pub struct Apioform {
 	ready: bool,
 	sink: Option<SplitSink<Framed<TlsStream<TcpStream>, MessageCodec<OwnedMessage>>>>,
 	stream: Option<SplitStream<Framed<TlsStream<TcpStream>, MessageCodec<OwnedMessage>>>>,
 	str_recv_vec: Vec<String>,
 	user: String,
-	pass: String
+	pass: String,
+	rx: Option<mpsc::Receiver<String>>,
 }
 // sends strings to and from os:2626
 // every player account has their own apioform
@@ -52,13 +55,16 @@ impl Apioform {
 			stream: None,
 			str_recv_vec: Vec::new(),
 			user: user,
-			pass: pass
+			pass: pass,
+			rx: None,
 		}
 	}
 
 	pub fn build(&mut self) {
+		let (tx, mut rx) = mpsc::channel();
 		let mut core = tokio_core::reactor::Core::new().unwrap();
 		let consid = signin::login(self.user.to_string(), self.pass.to_string());
+//		let mut stream;
 		let mut headers_owo = Headers::new();
 		headers_owo.set(Cookie(vec![consid]));
 		let client_future = ClientBuilder::new("wss://ostracodapps.com:2626/gameUpdate")
@@ -81,12 +87,24 @@ impl Apioform {
 			(sink, stream)
 //			client
 		})
-		.and_then(|(sink, stream)| -> Result<_, _> {
+		.and_then(|(sink, streamm)| -> Result<_, _> {
 			self.sink = Some(sink);
-			self.stream = Some(stream);
+			self.rx = Some(rx);
+//			stream = streamm;
 			self.ready = true;
 			Ok(())
 		});
+//		thread::spawn(move || {
+//			let mut core_deux = tokio_core::reactor::Core::new().unwrap();
+//			let stream_stream = 
+//				stream.for_each(|mess| {
+//					match mess {
+//						OwnedMessage::Text(messtr) => {tx.send(messtr).unwrap();},
+//						_ => ()
+//					};
+//				});
+//			core_deux.run(stream_stream).unwrap();
+//		});
 		core.run(client_future).unwrap();
 //		self.sink = Some(sink);
 //		self.stream = Some(stream);
@@ -117,56 +135,179 @@ impl Apioform {
 		//stream.poll();
 	}
 
-	pub fn is_ready(&self) -> bool {
-		self.ready
-	}
+
 
 	pub fn send(&mut self, data: String) {
-		match &mut self.sink {
+//		match &mut self.sendboi {
+//			Some(x) => {
+//				println!("Apioform: sending data {}", data);
+//				x.send_message(&OwnedMessage::Text(data)).unwrap();
+//			},
+//			None => {
+//				println!("Apioform: not sending data {}", data);
+//			}
+//		}
+	}
+
+	pub fn poll_next(&mut self) -> Option<String> {
+//		self.str_recv_vec.pop()
+//	}
+//		match &mut self.stream {
+//		Some(stream) => {
+//			match stream.poll().unwrap() {
+//			Async::Ready(t) => {
+//				println!("Apioform: owned message");
+//				match t { // Option OwnedMessage
+//				Some(j) => {
+//					match j {
+//					OwnedMessage::Text(text) => {
+//						Some(text)
+//					},
+//					_ => {
+//						println!("Apioform: non-text data");
+//						None
+//					}
+//					}
+//				},
+//				None => None
+//				}
+//			},
+//			Async::NotReady => {
+//				println!("Apioform: not ready");
+//				None
+//			}
+//			}
+//		},
+//		None => None,
+//		}
+	None
+	}
+}
+
+// This uses connect_insecure (sync, no tls)
+// so that we can use .split() on the client
+// the password is passed earlier over https, so
+// hopefully no imporant data can be mitm-attacked
+// unfortunately, this produces an error
+pub struct ApioformSync {
+	ready: bool,
+	user: String,
+	pass: String,
+	rx: Option<mpsc::Receiver<String>>,
+	sendboi: Option<websocket::sender::Writer<std::net::TcpStream>>
+}
+impl ApioformSync {
+	pub fn new(user: String, pass: String) -> Self {
+		Self { ready: false, user: user, pass: pass, rx: None, sendboi: None }
+	}
+	pub fn build(&mut self) {
+		let (tx, mut rx) = mpsc::channel();
+		let consid = signin::login(self.user.to_string(), self.pass.to_string());
+		let mut headers = Headers::new();
+		headers.set(Cookie(vec![consid]));
+		let client = ClientBuilder::new("ws://ostracodapps.com:2626/gameUpdate")
+		.unwrap().custom_headers(&headers).connect_insecure().unwrap();
+		let (mut recvboi, sendboi) = client.split().unwrap();
+		thread::spawn(move || {
+			for message in recvboi.incoming_messages() {
+				match message.unwrap() {
+					OwnedMessage::Text(messtr) => {tx.send(messtr).unwrap();},
+					_ => ()
+				};
+			}
+		});
+		self.rx = Some(rx);
+		self.sendboi = Some(sendboi);
+	}
+	pub fn send(&mut self, data: String) {
+		match &mut self.sendboi {
 			Some(x) => {
 				println!("Apioform: sending data {}", data);
-				x.send(OwnedMessage::Text(data)).poll().unwrap();
+				x.send_message(&OwnedMessage::Text(data)).unwrap();
 			},
 			None => {
 				println!("Apioform: not sending data {}", data);
 			}
 		}
 	}
-
 	pub fn poll_next(&mut self) -> Option<String> {
-//		self.str_recv_vec.pop()
-//	}
-		match &mut self.stream {
-		Some(stream) => {
-			match stream.poll().unwrap() {
-			Async::Ready(t) => {
-				println!("Apioform: owned message");
-				match t { // Option OwnedMessage
-				Some(j) => {
-					match j {
-					OwnedMessage::Text(text) => {
-						Some(text)
-					},
-					_ => {
-						println!("Apioform: non-text data");
-						None
+		match &mut self.rx {
+			Some(rx) => {
+				match rx.try_recv() {
+					Ok(strr) => {
+						println!("Aptioform: receiving string {}", strr);
+						Some(strr)
 					}
-					}
-				},
-				None => None
+					Err(_) => None
 				}
 			},
-			Async::NotReady => {
-				println!("Apioform: not ready");
-				None
-			}
-			}
-		},
-		None => None,
+			None => None
 		}
 	}
 }
 
+// This is a bad idea:
+// you cannot separate the stream and sink
+// with connect_secure / tls sync client
+// and having two sockets (like attempted here)
+// will result only in sadness
+pub struct ApioformSyncSec {
+	ready: bool,
+	user: String,
+	pass: String,
+	rx: Option<mpsc::Receiver<String>>,
+	sendboi: Option<websocket::sync::Client<native_tls::TlsStream<std::net::TcpStream>>>
+}
+impl ApioformSyncSec {
+	pub fn new(user: String, pass: String) -> Self {
+		Self { ready: false, user: user, pass: pass, rx: None, sendboi: None }
+	}
+	pub fn build(&mut self) {
+		let (tx, mut rx) = mpsc::channel();
+		let consid = signin::login(self.user.to_string(), self.pass.to_string());
+		let mut headers = Headers::new();
+		headers.set(Cookie(vec![consid]));
+		let client_sendboi = ClientBuilder::new("wss://ostracodapps.com:2626/gameUpdate")
+		.unwrap().custom_headers(&headers).connect_secure(None).unwrap();
+		let mut client_recvboi = ClientBuilder::new("wss://ostracodapps.com:2626/gameUpdate")
+		.unwrap().custom_headers(&headers).connect_secure(None).unwrap();
+		thread::spawn(move || {
+			for message in client_recvboi.incoming_messages() {
+				match message.unwrap() {
+					OwnedMessage::Text(messtr) => {tx.send(messtr).unwrap();},
+					_ => ()
+				};
+			}
+		});
+		self.rx = Some(rx);
+		self.sendboi = Some(client_sendboi);
+	}
+	pub fn send(&mut self, data: String) {
+		match &mut self.sendboi {
+			Some(x) => {
+				println!("Apioform: sending data {}", data);
+				x.send_message(&OwnedMessage::Text(data)).unwrap();
+			},
+			None => {
+				println!("Apioform: not sending data {}", data);
+			}
+		}
+	}
+	pub fn poll_next(&mut self) -> Option<String> {
+		match &mut self.rx {
+			Some(rx) => {
+				match rx.try_recv() {
+					Ok(strr) => {
+						println!("Aptioform: receiving string {}", strr);
+						Some(strr)
+					}
+					Err(_) => None
+				}
+			},
+			None => None
+		}
+	}
+}
 
 
 /*

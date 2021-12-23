@@ -1,8 +1,9 @@
 use std::fmt;
 use crate::Apioform;
+use crate::ApioformSync;
 
 pub fn send_commands(
-	apio: &mut Apioform,
+	apio: &mut ApioformSync,
 	command_vec: &Vec<String>
 	) {
 	if command_vec.len() == 0 {return;}
