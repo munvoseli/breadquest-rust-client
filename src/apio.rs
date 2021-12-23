@@ -184,6 +184,68 @@ impl Apioform {
 	}
 }
 
+
+// Try non-blocking connect_secure
+// it's what i originally had
+// it eventually results in some receiving buffer being filled up (?)
+// i don't think there's a way to flush it
+pub struct ApioformNonb {
+	ready: bool,
+	user: String,
+	pass: String,
+	client: Option<websocket::sync::Client<native_tls::TlsStream<std::net::TcpStream>>>
+}
+impl ApioformNonb {
+	pub fn new(user: String, pass: String) -> Self {
+		Self { ready: false, user: user, pass: pass, client: None }
+	}
+	pub fn build(&mut self) {
+		let consid = signin::login(self.user.to_string(), self.pass.to_string());
+		let mut headers = Headers::new();
+		headers.set(Cookie(vec![consid]));
+		let client = ClientBuilder::new("wss://ostracodapps.com:2626/gameUpdate")
+		.unwrap().custom_headers(&headers).connect_secure(None).unwrap();
+		client.set_nonblocking(true).unwrap();
+		self.client = Some(client);
+	}
+	pub fn send(&mut self, data: String) {
+		match &mut self.client {
+			Some(x) => {
+				println!("Apioform: sending data {}", data);
+				x.send_message(&OwnedMessage::Text(data)).unwrap();
+			},
+			None => {
+				println!("Apioform: not sending data {}", data);
+			}
+		}
+	}
+	pub fn poll_next(&mut self) -> Option<String> {
+		match &mut self.client {
+			Some(recvboi) => {
+				match recvboi.recv_message() {
+					Ok(opt) => {
+						match opt {
+							OwnedMessage::Text(strr) => {
+								println!("Apioform: receiving string {}", strr);
+								Some(strr)
+							},
+							_ => {
+								println!("Apioform: received data was not text");
+								None
+							}
+						}
+					}
+					Err(e) => {
+						println!("Apioform: error receiving message: {}", e);
+						None
+					}
+				}
+			},
+			None => None // if client has not been set up yet
+		}
+	}
+}
+
 // This uses connect_insecure (sync, no tls)
 // so that we can use .split() on the client
 // the password is passed earlier over https, so

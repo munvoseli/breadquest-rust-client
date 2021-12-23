@@ -14,8 +14,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use std::io::{Write, Read, stdout};
-use crate::apio::Apioform;
-use crate::apio::ApioformSync;
+use crate::apio::ApioformNonb as Apioform;
 
 mod qc;
 mod apio;
@@ -77,11 +76,11 @@ fn lop() {
 	let mut players: Vec<Player> = Vec::new();
 	let mut player_wss: Vec<String> = Vec::new();
 	let infvec = get_login_name();
-	let mut player_apio: Vec<ApioformSync> = Vec::new();
+	let mut player_apio: Vec<Apioform> = Vec::new();
 	for i in 0..(infvec.len() / 2) {
 		let user = infvec[i * 2].to_string();
 		let pass = infvec[i * 2 + 1].to_string();
-		let mut apio = ApioformSync::new(user, pass);
+		let mut apio = Apioform::new(user, pass);
 		apio.build();
 		player_apio.push(apio);
 		let mut player = Player {
