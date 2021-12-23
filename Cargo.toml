@@ -7,15 +7,16 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-websocket-transport = "^0"
+websocket = "0.26.2"
 sdl2 = "^0"
 webpki-roots = "^0"
-rustls = "^0"
-native-tls = "^0"
+rustls = "0.20.2"
+native-tls = "0.2.8"
 json = "^0"
 tokio = { version = "^0", features = ["full"] }
 tokio-core = "^0"
-futures = "0.3"
+futures = "0.1"
+openssl = "0.10"
 
 [dependencies.mio]
 version = "0.8"

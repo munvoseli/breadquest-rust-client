@@ -3,6 +3,11 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use std::borrow::Cow;
 use tokio::runtime::Builder;
+use std::borrow::Borrow;
+use std::pin::Pin;
+use websocket::futures::stream::SplitStream;
+use websocket::futures::stream::SplitSink;
+use websocket::futures::{Future, Sink, Stream};
 use websocket::header::Cookie;
 use websocket::header::Headers;
 use websocket::r#async::client::{Client,ClientNew};
@@ -13,29 +18,25 @@ use websocket::client::r#async::Framed;
 use websocket::ClientBuilder;
 use websocket::OwnedMessage;
 use websocket::WebSocketError;
-use std::borrow::Borrow;
-use std::pin::Pin;
+use futures::Async;
+/*
 use futures::stream::{SplitStream, SplitSink, Stream};
 use futures::future::Future;
 use futures::sink::Sink;
-/*
-use futures::Async;
 use std::future::Future;
 use native_tls::TlsStream;
 use std::io;
 use std::convert::TryFrom;
 use futures::Async;
 
-use websocket::futures::stream::SplitStream;
-use websocket::futures::stream::SplitSink;
-use websocket::futures::{Future, Sink, Stream};
 */
 
 mod signin;
 
 pub struct Apioform {
 	ready: bool,
-	trans: WsTransport<Framed<TlsStream<TcpStream>, MessageCodec<OwnedMessage>>>
+	sink: Option<SplitSink<Framed<TlsStream<TcpStream>, MessageCodec<OwnedMessage>>>>,
+	stream: Option<SplitStream<Framed<TlsStream<TcpStream>, MessageCodec<OwnedMessage>>>>,
 	str_recv_vec: Vec<String>,
 	user: String,
 	pass: String
@@ -78,6 +79,7 @@ impl Apioform {
 //			}
 //		});
 			(sink, stream)
+//			client
 		})
 		.and_then(|(sink, stream)| -> Result<_, _> {
 			self.sink = Some(sink);
