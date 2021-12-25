@@ -14,7 +14,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use std::io::{Write, Read, stdout};
-use crate::apio::ApioformNonb as Apioform;
+use crate::apio::Apioform as Apioform;
 
 mod qc;
 mod apio;

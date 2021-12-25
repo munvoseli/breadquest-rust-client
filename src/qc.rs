@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::apio::ApioformNonb as Apioform;
+use crate::apio::Apioform as Apioform;
 
 pub fn send_commands(
 	apio: &mut Apioform,
