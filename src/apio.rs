@@ -41,18 +41,18 @@ impl Apioform {
 			  .body(()).unwrap();
 			let (mut ws, resp) = tokio_tungstenite::connect_async(request).await.expect("Can't connnect");
 			let (mut sink, mut stream) = ws.split();
-			println!("Got ws sink and stream, sending brackets");
+//			println!("Got ws sink and stream, sending brackets");
 			sink.send(tungstenite::Message::Text("[]".to_string())).await.unwrap();
-			println!("Sent brackets");
+//			println!("Sent brackets");
 //			if let Ok(mut x) = susink.lock() {
 //				*x = Some(sink);
 //			}
 			std::thread::spawn(move || {
 				let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 				for y in rxup.iter() {
-					println!("HHHH");
+					//println!("HHHH");
 					let fut = sink.send(tungstenite::Message::Text(y));
-					println!("AAAA");
+					//println!("AAAA");
 					rt.block_on(fut).unwrap();
 				}
 			});
@@ -60,7 +60,7 @@ impl Apioform {
 				let data = message.unwrap().into_data();
 				match std::str::from_utf8(&data) {
 					Ok(v) => {
-						println!("Received data");
+						//println!("Received data");
 						if let Ok(mut x) = strsvec.lock() {
 							x.push(v.to_string());
 						}
@@ -76,7 +76,7 @@ impl Apioform {
 	pub fn send(&self, data: String) {
 		match &self.txup {
 		Some(h) => {
-			println!("Passing data along txup");
+//			println!("Passing data along txup");
 			h.send(data).unwrap();
 		  },
 		None => (),

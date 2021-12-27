@@ -6,7 +6,7 @@ pub fn send_commands(
 	command_vec: &Vec<String>
 	) {
 	if command_vec.len() == 0 {return;}
-	println!("Sending commands...");
+	//println!("Sending commands...");
 	let mut comstr = "[".to_string();
 	comstr.push_str(command_vec[0].as_str());
 	for i in 1..command_vec.len() {
@@ -30,11 +30,15 @@ pub fn assert_pos(command_vec: &mut Vec<String>) {
 }
 
 pub fn get_tiles(command_vec: &mut Vec<String>) {
-	command_vec.push("{\"commandName\":\"getTiles\",\"size\":15}".to_string());
+	command_vec.push("{\"commandName\":\"getTiles\",\"size\":31}".to_string());
 }
 
 pub fn add_chat_message(command_vec: &mut Vec<String>, text: String) {
 	command_vec.push(format!("{{\"commandName\":\"addChatMessage\",\"text\":\"{}\"}}", text));
+}
+
+pub fn walk(command_vec: &mut Vec<String>, dir: u8) {
+	command_vec.push(format!("{{\"commandName\":\"walk\",\"direction\":{}}}", dir));
 }
 
 pub fn remove_tile(command_vec: &mut Vec<String>, dir: u8) {

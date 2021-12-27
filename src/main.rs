@@ -68,8 +68,8 @@ fn lop() {
 //	let tcpclient = login_socket(infostr.0, infostr.1);
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
-	let window = video_subsystem.window("h", 1440, 960)
-	.position_centered().build().unwrap();
+	let window = video_subsystem.window("h", 1440, 480)
+	.position(480, 0).build().unwrap();
 	let mut canvas = window.into_canvas().build().unwrap();
 	let mut i:i32 = 0;
 	let mut event_pump = sdl_context.event_pump().unwrap();
@@ -109,29 +109,35 @@ fn lop() {
 				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::remove_tile(&mut players[0].comque, 1); },
 				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::remove_tile(&mut players[0].comque, 2); },
 				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::remove_tile(&mut players[0].comque, 3); },
+				Event::MouseButtonDown { x, y, .. } => { try_walk(&mut players[0], x, y); },
 				_ => {}
 			}
 		}
 
 		// now do things for each player
 		for mut player in &mut players {
-			draw(&mut canvas, &player);
 			if i % 64 == 0 {
 				qc::get_entities(&mut player.comque);
 				qc::get_tiles(&mut player.comque);
+				qc::assert_pos(&mut player.comque);
 //				qc::add_chat_message(&mut player.comque, "test".to_string());
 			}
 			let apio = &mut player_apio[player.pindex as usize];
+			let mut recvcom: String = player.user.to_string();
+			let mut has_recv = false;
 			'message_loop: loop {
 				let vecstr = match apio.poll_next() {
 					Some(str) => str,
 					None => { break 'message_loop; }
 				};
+				has_recv = true;
 				//println!("{:?}", vecstr);
 				let respdata = json::parse(&vecstr).unwrap();
 				for command in respdata["commandList"].members() {
 					let typ:&str = command["commandName"].as_str().unwrap();
-					println!("{} {}", player.user, typ);
+					recvcom.push(' ');
+					recvcom.push_str(typ);
+					//println!("{} {}", player.user, typ);
 					//println!("{}", command.dump());
 					let ty = String::from(typ);
 					if ty.eq("setTiles") {
@@ -146,11 +152,17 @@ fn lop() {
 						player.enemies = Vec::new();
 					} else if ty.eq("setLocalPlayerInfo") {
 						player.user = command["username"].as_str().unwrap().to_string();
+					} else if ty.eq("addChatMessage") {
+						println!("{}", command.dump());
 					}
 				}
 			}
+			if has_recv {
+				println!("{}", recvcom);
+			}
 			qc::send_commands(apio, &player.comque);
 			player.comque = Vec::new();
+			draw(&mut canvas, &player);
 		}
 		i = i + 1;
 		::std::thread::sleep(Duration::new(0, 1000000000u32 / 32));
@@ -209,6 +221,39 @@ fn get_tilbufi(x: i32, y: i32) -> usize {
 	((x & 127) + (y & 127) * 128) as usize
 }
 
+fn try_walk(player: &mut Player, xpix: i32, ypix: i32) {
+	let sctx: i32 = xpix / 8;
+	let scty: i32 = ypix / 8;
+	let mut relx = sctx - 30;
+	let mut rely = scty - 30;
+	let crx = relx;
+	let cry = rely;
+	let steps = get_tile_at_relpos(player, relx, rely, player.walks_to);
+	//println!("{} {} {}", relx, rely, steps);
+	let mut walks: Vec<u8> = Vec::new();
+	for i in 0..steps {
+		for (x, y, d) in [(0,-1,2), (1,0,3), (0,1,0), (-1,0,1)] {
+			let tsep = get_tile_at_relpos(player, relx + x, rely + y, player.walks_to);
+			if tsep < steps - i {
+				relx += x;
+				rely += y;
+				walks.push(d);
+				break;
+			}
+		}
+	}
+	//println!("{:?}", walks);
+	for i in 0..steps {
+		if let Some(d) = walks.pop() {
+			qc::walk(&mut player.comque, d);
+		}
+	}
+	player.x += crx;
+	player.y += cry;
+	qc::get_tiles(&mut player.comque);
+	qc::assert_pos(&mut player.comque);
+}
+
 fn generate_pathing(player: &mut Player) {
 	for i in 0..player.tile_arr.len() {
 		let tile = player.tile_arr[i];
@@ -250,11 +295,16 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player)
 			let mut r:u8;
 			let mut g:u8;
 			let mut b:u8;
-			let mul: f32 = 5.0 / (get_tile_at_pos(player.x + x - shsize, player.y + y - shsize, player.walks_to) as f32 + 6.0) + 1.0 / 6.0;
+			let mut mul: f32 = 5.0 / (get_tile_at_pos(player.x + x - shsize, player.y + y - shsize, player.walks_to) as f32 + 6.0) + 1.0 / 6.0;
 			if tile >= 0x80 && tile <= 0x89 {
 				r = [255,255,255,255,  0,  0,  0,255,170][tile as usize - 0x80];
 				g = [255,  0,170,255,255,255,  0,  0,170][tile as usize - 0x80];
 				b = [255,  0,  0,  0,  0,255,255,255,170][tile as usize - 0x80];
+			} else if tile >= 0x91 && tile <= 0x94 {
+				r = 255;
+				g = 255;
+				b = 255;
+				mul = 1.0;
 			} else {
 				r = tile;
 				b = tile;
@@ -277,4 +327,7 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player)
 			canvas.fill_rect(Some(r)).ok();
 		}
 	}
+	canvas.set_draw_color(Color::RGB(85,0,255));
+	let r = sdl2::rect::Rect::new((shsize + 60 * (player.pindex % 3)) * 8 + 1, ((shsize + 60 * (player.pindex / 3))) * 8 + 1, 6, 6);
+	canvas.fill_rect(Some(r)).ok();
 }
