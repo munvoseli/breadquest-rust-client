@@ -119,7 +119,7 @@ fn lop() {
 			if i % 64 == 0 {
 				qc::get_entities(&mut player.comque);
 				qc::get_tiles(&mut player.comque);
-				qc::add_chat_message(&mut player.comque, "test".to_string());
+//				qc::add_chat_message(&mut player.comque, "test".to_string());
 			}
 			let apio = &mut player_apio[player.pindex as usize];
 			'message_loop: loop {
@@ -127,12 +127,12 @@ fn lop() {
 					Some(str) => str,
 					None => { break 'message_loop; }
 				};
-				println!("{:?}", vecstr);
+				//println!("{:?}", vecstr);
 				let respdata = json::parse(&vecstr).unwrap();
 				for command in respdata["commandList"].members() {
 					let typ:&str = command["commandName"].as_str().unwrap();
 					println!("{} {}", player.user, typ);
-					println!("{}", command.dump());
+					//println!("{}", command.dump());
 					let ty = String::from(typ);
 					if ty.eq("setTiles") {
 						cq_set_tiles(command, &mut player.tile_arr);

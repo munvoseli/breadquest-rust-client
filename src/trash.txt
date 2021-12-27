@@ -1,0 +1,39 @@
+//			});
+//			loop {
+//				if let Ok(mut x) = txup.lock() {
+//					if (*x).len() == 0 {
+//						continue;
+//					}
+//				}
+//			}
+
+//		let (mut txdn, rxdn) = futures_channel::mpsc::channel(1024);
+//			mio::net::TcpListener::bind().unwrap().local_addr().unwrap()
+//			let mut config = rustls::ClientConfig::new();
+//			config.root_store.add_server_trust_anchors(
+//				&webpki_roots::TLS_SERVER_ROOTS
+//			);
+//			let dnsname = webpki::DnsNameRef::try_from_ascii_str(
+//				"ostracodapps.com").unwrap();
+//			let strem = TcpStream::connect(&addrconfig.connect(dnsname, strem).await?;
+//			let mio_listen = mio::net::TcpListener::bind("67.205.178.12:2626".parse().unwrap());
+//			let strem = tokio::net::TcpStream::connect("67.205.178.12:2626").await.unwrap();
+//			let strem: Vec<u8> = Vec::new();
+		match &mut self.rxdn {
+			Some(rx) => {
+				match rx.try_next() {
+					Ok(Some(strr)) => {
+						println!("Apioform: receiving data {}", strr);
+						Some(strr)
+					},
+					Ok(None) => None,
+					Err(_) => None
+				}
+			},
+			None => None
+		}
+//			Pin::new(&mut sink).poll_ready();
+//			let fut = async {connect_async(url).await.expect("Apioform: failed to connect")};
+//			let (mut ws, _) = rt.block_on(fut);
+//			let (write, mut read) = ws.split();
+//				txdn.send("".to_string()).await.unwrap();
