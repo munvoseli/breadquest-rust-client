@@ -15,9 +15,11 @@ use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use std::io::{Write, Read, stdout};
 use crate::apio::Apioform as Apioform;
+use crate::chunk::WorldTiles as WorldTiles;
 
 mod qc;
 mod apio;
+mod chunk;
 
 struct Enemy { x: i32, y: i32, }
 
@@ -25,13 +27,26 @@ struct Player {
 	pindex: i32,
 	x: i32,
 	y: i32,
+	health: u8,
 	user: String,
 	comque: Vec<String>,
 	enemies: Vec<Enemy>,
-	tile_arr: [u8; 128*128],
-	walks_to: [u8; 128*128]
+	walks_to: [u8; 67*67]
 }
 
+impl Player {
+	fn get_walk_relpos(&self, x: i32, y: i32) -> u8 {
+		if x.abs() > 33 || y.abs() > 33 {
+			return 255;
+		}
+		let i = (x + 33) + (y + 33) * 67;
+		self.walks_to[i as usize]
+	}
+	fn set_walk_relpos(&mut self, x: i32, y: i32, tile: u8) {
+		let i = (x + 33) + (y + 33) * 67;
+		self.walks_to[i as usize] = tile;
+	}
+}
 
 /* i am not entirely convinced
    that the song sunny came home
@@ -77,6 +92,7 @@ fn lop() {
 	let mut player_wss: Vec<String> = Vec::new();
 	let infvec = get_login_name();
 	let mut player_apio: Vec<Apioform> = Vec::new();
+	let mut world_tiles = WorldTiles::new();
 	for i in 0..(infvec.len() / 2) {
 		let user = infvec[i * 2].to_string();
 		let pass = infvec[i * 2 + 1].to_string();
@@ -84,10 +100,9 @@ fn lop() {
 		apio.build();
 		player_apio.push(apio);
 		let mut player = Player {
-			pindex: i as i32, x: 0, y: 0,
+			pindex: i as i32, x: 0, y: 0, health: 5,
 			user: infvec[i * 2].to_string(),
-			walks_to: [255; 128*128],
-			tile_arr: [60; 128*128],
+			walks_to: [255; 67*67],
 			enemies: Vec::new(),
 			comque: Vec::new()
 		};
@@ -109,7 +124,7 @@ fn lop() {
 				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::remove_tile(&mut players[0].comque, 1); },
 				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::remove_tile(&mut players[0].comque, 2); },
 				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::remove_tile(&mut players[0].comque, 3); },
-				Event::MouseButtonDown { x, y, .. } => { try_walk(&mut players[0], x, y); },
+				Event::MouseButtonDown { x, y, .. } => { try_walk(&mut players[0], x, y, &world_tiles); },
 				_ => {}
 			}
 		}
@@ -120,6 +135,7 @@ fn lop() {
 				qc::get_entities(&mut player.comque);
 				qc::get_tiles(&mut player.comque);
 				qc::assert_pos(&mut player.comque);
+				qc::get_stats(&mut player.comque);
 //				qc::add_chat_message(&mut player.comque, "test".to_string());
 			}
 			let apio = &mut player_apio[player.pindex as usize];
@@ -141,8 +157,8 @@ fn lop() {
 					//println!("{}", command.dump());
 					let ty = String::from(typ);
 					if ty.eq("setTiles") {
-						cq_set_tiles(command, &mut player.tile_arr);
-						generate_pathing(&mut player);
+						cq_set_tiles(command, &mut world_tiles);
+						generate_pathing(&mut player, &world_tiles);
 					} else if ty.eq("setLocalPlayerPos") {
 						player.x = command["pos"]["x"].as_i32().unwrap();
 						player.y = command["pos"]["y"].as_i32().unwrap();
@@ -152,6 +168,9 @@ fn lop() {
 						player.enemies = Vec::new();
 					} else if ty.eq("setLocalPlayerInfo") {
 						player.user = command["username"].as_str().unwrap().to_string();
+					} else if ty.eq("setStats") {
+						//println!("{}", command.dump());
+						player.health = command["health"].as_u8().unwrap();
 					} else if ty.eq("addChatMessage") {
 						println!("{}", command.dump());
 					}
@@ -162,42 +181,22 @@ fn lop() {
 			}
 			qc::send_commands(apio, &player.comque);
 			player.comque = Vec::new();
-			draw(&mut canvas, &player);
+			draw(&mut canvas, &player, &world_tiles);
 		}
 		i = i + 1;
 		::std::thread::sleep(Duration::new(0, 1000000000u32 / 32));
 	}
 }
 
-fn set_tile_at_pos(x_world: i32, y_world: i32, tile_arr: &mut [u8; 128*128], tile: u8) {
-	let x = x_world & 127;
-	let y = y_world & 127;
-	let i = (x + y * 128) as usize;
-	tile_arr[i] = tile;
-}
-
-fn get_tile_at_pos(x_world: i32, y_world: i32, tile_arr: [u8; 128*128]) -> u8 {
-	let x = x_world & 127;
-	let y = y_world & 127;
-	let i = (x + y * 128) as usize;
-	return tile_arr[i];
-}
-
-fn cq_set_tiles(command: &json::JsonValue, tile_arr: &mut [u8; 128*128]) {
-	let slen: u32 = command["size"].as_u32().unwrap();
+fn cq_set_tiles(command: &json::JsonValue, world_tiles: &mut WorldTiles) {
+	let slen: i32 = command["size"].as_i32().unwrap();
 	let mut tilei = 0;
 	let x0 = command["pos"]["x"].as_i32().unwrap();
 	let y0 = command["pos"]["y"].as_i32().unwrap();
-//	let hslen: i32 = i32::try_from(slen >> 1).unwrap();
 	for y in 0..slen {
 		for x in 0..slen {
-			let x_world = (x as i32) + x0;
-			let y_world = (y as i32) + y0;
-			let x_wrap = x_world & 127;
-			let y_wrap = y_world & 127;
-			let bufi = (x_wrap + y_wrap * 128) as usize;
-			tile_arr[bufi] = command["tileList"][tilei].as_u8().unwrap();
-//			set_tile_at_pos(x_world, y_world, tile_arr, command["tileList"][tilei].as_u8().unwrap());
+			let tile = command["tileList"][tilei].as_u8().unwrap();
+			world_tiles.set_tile_at(x + x0, y + y0, tile);
 			tilei = tilei + 1;
 		}
 	}
@@ -221,19 +220,19 @@ fn get_tilbufi(x: i32, y: i32) -> usize {
 	((x & 127) + (y & 127) * 128) as usize
 }
 
-fn try_walk(player: &mut Player, xpix: i32, ypix: i32) {
+fn try_walk(player: &mut Player, xpix: i32, ypix: i32, world_tiles: &WorldTiles) {
 	let sctx: i32 = xpix / 8;
 	let scty: i32 = ypix / 8;
 	let mut relx = sctx - 30;
 	let mut rely = scty - 30;
 	let crx = relx;
 	let cry = rely;
-	let steps = get_tile_at_relpos(player, relx, rely, player.walks_to);
+	let steps = player.get_walk_relpos(relx, rely);//get_tile_at_relpos(player, relx, rely, player.walks_to);
 	//println!("{} {} {}", relx, rely, steps);
 	let mut walks: Vec<u8> = Vec::new();
 	for i in 0..steps {
 		for (x, y, d) in [(0,-1,2), (1,0,3), (0,1,0), (-1,0,1)] {
-			let tsep = get_tile_at_relpos(player, relx + x, rely + y, player.walks_to);
+			let tsep = player.get_walk_relpos(relx+x, rely+y);
 			if tsep < steps - i {
 				relx += x;
 				rely += y;
@@ -250,32 +249,34 @@ fn try_walk(player: &mut Player, xpix: i32, ypix: i32) {
 	}
 	player.x += crx;
 	player.y += cry;
-	qc::get_tiles(&mut player.comque);
+	generate_pathing(player, world_tiles);
 	qc::assert_pos(&mut player.comque);
+	qc::get_tiles(&mut player.comque);
 }
 
-fn generate_pathing(player: &mut Player) {
-	for i in 0..player.tile_arr.len() {
-		let tile = player.tile_arr[i];
-		player.walks_to[i] = if tile == 0x80 ||
+fn generate_pathing(player: &mut Player, world_tiles: &WorldTiles) {
+	let mut i = 0;
+	for y in -33..=33 { for x in -33..=33 {
+		let tile = world_tiles.get_tile_at(player.x + x, player.y + y);
+		player.walks_to[i] = if
+			(tile > 0 && tile <= 0x80) ||
 			(tile >= 0x89 && tile <= 0x94)
 			{ 255 } else { 254 };
-		// 254 for determined unreachable / don't evaluate
-	}
-	player.walks_to[get_tilbufi(player.x, player.y)] = 0;
+		i = i + 1;
+	}}
+	player.set_walk_relpos(0, 0, 0);
 	let mut coords: Vec<(i32, i32)> = Vec::new();
 	coords.push((player.x, player.y));
-	loop {
+	for j in 0..30 { // increase to 32 or 33 if possible
 		let mut newcoords: Vec<(i32, i32)> = Vec::new();
 		for coord in coords {
-			let bufi = get_tilbufi(coord.0, coord.1);
-			let tile = player.walks_to[bufi];
-			// if tile > 32 { continue; }
-			for tup in [(0,-1),(1,0),(0,1),(-1,0)] {
-				let nbufi = get_tilbufi(coord.0 + tup.0, coord.1 + tup.1);
-				let ntile = player.walks_to[nbufi];
+			let relx = coord.0 - player.x;
+			let rely = coord.1 - player.y;
+			let tile = player.get_walk_relpos(relx, rely);
+			for tup in [(0i32,-1i32),(1,0),(0,1),(-1,0)] {
+				let ntile = player.get_walk_relpos(relx+tup.0, rely+tup.1);
 				if ntile != 255 { continue; }
-				player.walks_to[nbufi] = tile + 1;
+				player.set_walk_relpos(relx+tup.0, rely+tup.1, tile + 1);
 				newcoords.push((coord.0 + tup.0, coord.1 + tup.1));
 			}
 		}
@@ -286,17 +287,17 @@ fn generate_pathing(player: &mut Player) {
 	}
 }
 
-fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player) {
+fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player, world_tiles: &WorldTiles) {
 	let ssize: i32 = 60;
 	let shsize: i32 = ssize >> 1;
 	for y in 0..ssize {
 		for x in 0..ssize {
-			let tile = get_tile_at_pos(player.x + x - shsize, player.y + y - shsize, player.tile_arr);
+			let tile = world_tiles.get_tile_at(player.x + x - shsize, player.y + y - shsize);
 			let mut r:u8;
 			let mut g:u8;
 			let mut b:u8;
-			let mut mul: f32 = 5.0 / (get_tile_at_pos(player.x + x - shsize, player.y + y - shsize, player.walks_to) as f32 + 6.0) + 1.0 / 6.0;
-			if tile >= 0x80 && tile <= 0x89 {
+			let mut mul: f32 = 5.0 / (player.get_walk_relpos(x - shsize, y - shsize) as f32 + 6.0) + 1.0 / 6.0;
+			if tile >= 0x80 && tile <= 0x88 {
 				r = [255,255,255,255,  0,  0,  0,255,170][tile as usize - 0x80];
 				g = [255,  0,170,255,255,255,  0,  0,170][tile as usize - 0x80];
 				b = [255,  0,  0,  0,  0,255,255,255,170][tile as usize - 0x80];

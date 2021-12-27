@@ -29,6 +29,10 @@ pub fn assert_pos(command_vec: &mut Vec<String>) {
 	command_vec.push("{\"commandName\":\"assertPos\", \"pos\":{\"x\":0,\"y\":0}}".to_string());
 }
 
+pub fn get_stats(command_vec: &mut Vec<String>) {
+	command_vec.push("{\"commandName\":\"getStats\"}".to_string());
+}
+
 pub fn get_tiles(command_vec: &mut Vec<String>) {
 	command_vec.push("{\"commandName\":\"getTiles\",\"size\":31}".to_string());
 }
