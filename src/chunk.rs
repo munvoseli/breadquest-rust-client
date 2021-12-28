@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{Read, Write};
 
-use crate::Player;
+use crate::player::Player;
 
 struct Chunk {
 	x: i32,
