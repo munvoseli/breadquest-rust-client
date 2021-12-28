@@ -27,6 +27,8 @@ struct Player {
 	pindex: i32,
 	x: i32,
 	y: i32,
+	rx: i32,
+	ry: i32,
 	health: u8,
 	user: String,
 	comque: Vec<String>,
@@ -102,6 +104,7 @@ fn lop() {
 		player_apio.push(apio);
 		let mut player = Player {
 			pindex: i as i32, x: 0, y: 0, health: 5,
+			rx: 0, ry: 0,
 			user: infvec[i * 2].to_string(),
 			walks_to: [255; 67*67],
 			enemies: Vec::new(),
@@ -113,6 +116,7 @@ fn lop() {
 	}
 	println!("hhh");
 	let mut pindex: i32 = 0;
+	let mut act_pli: usize = 0;
 	'running: loop {
 		canvas.present();
 		for event in event_pump.poll_iter() {
@@ -121,11 +125,21 @@ fn lop() {
 				Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
 					break 'running
 				},
-				Event::KeyDown { keycode: Some(Keycode::W), .. } => { qc::remove_tile(&mut players[0].comque, 0); },
-				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::remove_tile(&mut players[0].comque, 1); },
-				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::remove_tile(&mut players[0].comque, 2); },
-				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::remove_tile(&mut players[0].comque, 3); },
-				Event::MouseButtonDown { x, y, .. } => { try_walk(&mut players[0], x, y, &world_tiles); },
+				Event::KeyDown { keycode: Some(Keycode::H), .. } => { players[act_pli].rx -= 8; },
+				Event::KeyDown { keycode: Some(Keycode::J), .. } => { players[act_pli].ry += 8; },
+				Event::KeyDown { keycode: Some(Keycode::K), .. } => { players[act_pli].ry -= 8; },
+				Event::KeyDown { keycode: Some(Keycode::L), .. } => { players[act_pli].rx += 8; },
+				Event::KeyDown { keycode: Some(Keycode::R), .. } => { players[act_pli].rx = 0; players[act_pli].ry = 0; },
+				Event::KeyDown { keycode: Some(Keycode::W), .. } => { qc::remove_tile(&mut players[act_pli].comque, 0); },
+				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::remove_tile(&mut players[act_pli].comque, 1); },
+				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::remove_tile(&mut players[act_pli].comque, 2); },
+				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::remove_tile(&mut players[act_pli].comque, 3); },
+				Event::MouseMotion { x, y, .. } => {
+					act_pli = ((x / 480) as usize) + ((y / 480) as usize) * 3;
+				},
+				Event::MouseButtonDown { x, y, .. } => {
+					try_walk(&mut players[act_pli], x % 480, y % 480, &world_tiles);
+				},
 				_ => {}
 			}
 		}
@@ -294,15 +308,25 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player,
 	let shsize: i32 = ssize >> 1;
 	for y in 0..ssize {
 		for x in 0..ssize {
-			let tile = world_tiles.get_tile_at(player.x + x - shsize, player.y + y - shsize);
+			let tile = world_tiles.get_tile_at(player.x + x - shsize + player.rx, player.y + y - shsize + player.ry);
 			let mut r:u8;
 			let mut g:u8;
 			let mut b:u8;
-			let mut mul: f32 = 5.0 / (player.get_walk_relpos(x - shsize, y - shsize) as f32 + 6.0) + 1.0 / 6.0;
-			if tile >= 0x80 && tile <= 0x88 {
-				r = [255,255,255,255,  0,  0,  0,255,170][tile as usize - 0x80];
-				g = [255,  0,170,255,255,255,  0,  0,170][tile as usize - 0x80];
-				b = [255,  0,  0,  0,  0,255,255,255,170][tile as usize - 0x80];
+			let mut mul: f32;
+			if player.rx == 0 && player.ry == 0 {
+				mul = 5.0 / (player.get_walk_relpos(x - shsize, y - shsize) as f32 + 6.0) + 1.0 / 6.0;
+			} else {
+				mul = 1.0;
+			}
+			if tile == 0x80 {
+				r = 255;
+				g = 255;
+				b = 255;
+			} else if tile >= 0x81 && tile <= 0x88 {
+				r = [255,255,255,  0,  0,  0,255,170][tile as usize - 0x81];
+				g = [  0,170,255,255,255,  0,  0,170][tile as usize - 0x81];
+				b = [  0,  0,  0,  0,255,255,255,170][tile as usize - 0x81];
+				mul = 0.75;
 			} else if tile >= 0x91 && tile <= 0x94 {
 				r = 255;
 				g = 255;
