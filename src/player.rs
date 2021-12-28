@@ -2,6 +2,28 @@ use crate::chunk::WorldTiles;
 use sdl2::pixels::Color;
 use crate::qc;
 use crate::Enemy;
+use crate::apio::Apioform;
+
+fn cq_set_tiles(command: &json::JsonValue, world_tiles: &mut WorldTiles) {
+	let slen: i32 = command["size"].as_i32().unwrap();
+	let mut tilei = 0;
+	let x0 = command["pos"]["x"].as_i32().unwrap();
+	let y0 = command["pos"]["y"].as_i32().unwrap();
+	for y in 0..slen {
+		for x in 0..slen {
+			let tile = command["tileList"][tilei].as_u8().unwrap();
+			world_tiles.set_tile_at(x + x0, y + y0, tile);
+			tilei = tilei + 1;
+		}
+	}
+}
+
+fn cq_add_entity(command: &json::JsonValue, enemies: &mut Vec<Enemy>) {
+	enemies.push(Enemy {
+		x: command["entityInfo"]["pos"]["x"].as_i32().unwrap(),
+		y: command["entityInfo"]["pos"]["y"].as_i32().unwrap(),
+		});
+}
 
 pub struct Player {
 	pub pindex: i32,
@@ -13,7 +35,9 @@ pub struct Player {
 	pub user: String,
 	pub comque: Vec<String>,
 	pub enemies: Vec<Enemy>,
-	pub walks_to: [u8; 67*67]
+	pub walks_to: [u8; 67*67],
+	pub walks_left: u8,
+	pub play_mode: u8, // manual / bore
 }
 
 impl Player {
@@ -158,5 +182,54 @@ impl Player {
 		canvas.set_draw_color(Color::RGB(85,0,255));
 		let r = sdl2::rect::Rect::new(shsize * 8 + 1 + cou, shsize * 8 + 1 + cov, 6, 6);
 		canvas.fill_rect(Some(r)).ok();
+	}
+
+	pub fn game_step(&mut self, apio: &mut Apioform, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, world_tiles: &mut WorldTiles) {
+		let mut recvcom: String = self.user.to_string();
+		let mut has_recv = false;
+		'message_loop: loop {
+			let vecstr = match apio.poll_next() {
+				Some(str) => str,
+				None => { break 'message_loop; }
+			};
+			has_recv = false;
+			//println!("{:?}", vecstr);
+			let respdata = json::parse(&vecstr).unwrap();
+			for command in respdata["commandList"].members() {
+				let typ:&str = command["commandName"].as_str().unwrap();
+				recvcom.push(' ');
+				recvcom.push_str(typ);
+				//println!("{} {}", player.user, typ);
+				//println!("{}", command.dump());
+				let ty = String::from(typ);
+				if ty.eq("setTiles") {
+					cq_set_tiles(command, world_tiles);
+					self.generate_pathing(&world_tiles);
+				} else if ty.eq("setLocalPlayerPos") {
+					self.x = command["pos"]["x"].as_i32().unwrap();
+					self.y = command["pos"]["y"].as_i32().unwrap();
+				} else if ty.eq("addEntity") {
+					cq_add_entity(command, &mut self.enemies);
+				} else if ty.eq("removeAllEntities") {
+					self.enemies = Vec::new();
+				} else if ty.eq("setLocalPlayerInfo") {
+					self.user = command["username"].as_str().unwrap().to_string();
+				} else if ty.eq("setStats") {
+					//println!("{}", command.dump());
+					self.health = command["health"].as_u8().unwrap();
+				} else if ty.eq("addChatMessage") {
+					println!("{}", command.dump());
+				}
+			}
+		}
+		if has_recv {
+			println!("{}", recvcom);
+		}
+		if self.walks_left < 32 {
+			self.walks_left = self.walks_left + 1;
+		}
+		qc::send_commands(apio, &self.comque);
+		self.comque = Vec::new();
+		self.draw(canvas, &world_tiles);
 	}
 }
