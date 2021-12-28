@@ -15,7 +15,7 @@ impl Chunk {
 	}
 	// load chunk from file, generate if necessary
 	fn new_maybe_file(x: i32, y: i32) -> Self {
-		let f = File::open(format!("{}_{}", x, y));
+		let f = File::open(format!("{}_{}.dat", x, y));
 		let mut chunk = Self::new_empty(x, y);
 		if let Ok(mut file) = f {
 			let mut buf: [u8; 9 + 128 * 128] = [1; 128*128+9];
@@ -26,12 +26,36 @@ impl Chunk {
 		}
 		chunk
 	}
+	fn new_from_filename(filename: String) -> Self {
+		let x: i32 = 0;
+		let y: i32 = 0;
+		let mut chunk = Self::new_empty(x, y);
+		if let Ok(mut file) = File::open(filename) {
+			let mut buf: [u8; 9 + 128 * 128] = [1; 128*128+9];
+			file.read(&mut buf).unwrap();
+			let x = ((((((buf[1] as i32) << 8) | buf[2] as i32) << 8) | buf[3] as i32) << 8) | buf[4] as i32;
+			let y = ((((((buf[5] as i32) << 8) | buf[6] as i32) << 8) | buf[7] as i32) << 8) | buf[8] as i32;
+			chunk = Self::new_empty(x, y);
+			for i in 0..128*128 {
+				chunk.tiles[i] = buf[i + 9];
+			}
+		}
+		chunk
+	}
 	fn save(&self) {
 		let mut buf: [u8; 9 + 128 * 128] = [0; 128*128+9];
+		buf[1] = ((self.x >> 24) & 255) as u8; // store x and y
+		buf[2] = ((self.x >> 16) & 255) as u8; // big endian
+		buf[3] = ((self.x >>  8) & 255) as u8;
+		buf[4] = ((self.x >>  0) & 255) as u8;
+		buf[5] = ((self.y >> 24) & 255) as u8;
+		buf[6] = ((self.y >> 16) & 255) as u8;
+		buf[7] = ((self.y >>  8) & 255) as u8;
+		buf[8] = ((self.y >>  0) & 255) as u8;
 		for i in 0..128*128 {
 			buf[i + 9] = self.tiles[i];
 		}
-		let mut f = File::create(format!("{}_{}", self.x, self.y)).unwrap();
+		let mut f = File::create(format!("{}_{}.dat", self.x, self.y)).unwrap();
 		f.write(&buf).unwrap();
 	}
 }
@@ -77,5 +101,28 @@ impl WorldTiles {
 	}
 	pub fn new() -> Self {
 		Self { chunks: Vec::new() }
+	}
+	pub fn save_all(&self) {
+		for chunk in &self.chunks {
+			chunk.save();
+		}
+	}
+	pub fn load_all_file(&mut self) {
+		for entry in std::fs::read_dir("./").unwrap() {
+			let entry = entry.unwrap();
+			let path = entry.path();
+			let pathh = path.file_name();
+			if let Some(pathh) = pathh {
+				if let Some(pathhh) = pathh.to_str() {
+					let pstr = pathhh.to_string();
+					if pstr.len() > 4 {
+						let valid = (&pstr[pstr.len() - 4..pstr.len()]).eq(".dat");
+						if valid {
+							self.chunks.push(Chunk::new_from_filename(pstr));
+						}
+					}
+				}
+			}
+		}
 	}
 }

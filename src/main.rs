@@ -93,6 +93,7 @@ fn lop() {
 	let infvec = get_login_name();
 	let mut player_apio: Vec<Apioform> = Vec::new();
 	let mut world_tiles = WorldTiles::new();
+	world_tiles.load_all_file();
 	for i in 0..(infvec.len() / 2) {
 		let user = infvec[i * 2].to_string();
 		let pass = infvec[i * 2 + 1].to_string();
@@ -186,6 +187,7 @@ fn lop() {
 		i = i + 1;
 		::std::thread::sleep(Duration::new(0, 1000000000u32 / 32));
 	}
+	world_tiles.save_all();
 }
 
 fn cq_set_tiles(command: &json::JsonValue, world_tiles: &mut WorldTiles) {
