@@ -23,7 +23,7 @@ mod chunk;
 
 struct Enemy { x: i32, y: i32, }
 
-struct Player {
+pub struct Player {
 	pindex: i32,
 	x: i32,
 	y: i32,
@@ -95,7 +95,7 @@ fn lop() {
 	let infvec = get_login_name();
 	let mut player_apio: Vec<Apioform> = Vec::new();
 	let mut world_tiles = WorldTiles::new();
-	world_tiles.load_all_file();
+	//world_tiles.load_all_file();
 	for i in 0..(infvec.len() / 2) {
 		let user = infvec[i * 2].to_string();
 		let pass = infvec[i * 2 + 1].to_string();
@@ -143,6 +143,9 @@ fn lop() {
 				_ => {}
 			}
 		}
+		if i % 64 == 32 {
+			world_tiles.unload_unused(&players);
+		}
 
 		// now do things for each player
 		for mut player in &mut players {
@@ -161,7 +164,7 @@ fn lop() {
 					Some(str) => str,
 					None => { break 'message_loop; }
 				};
-				has_recv = true;
+				has_recv = false;
 				//println!("{:?}", vecstr);
 				let respdata = json::parse(&vecstr).unwrap();
 				for command in respdata["commandList"].members() {
@@ -318,6 +321,13 @@ fn draw(canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, player: &Player,
 			} else {
 				mul = 1.0;
 			}
+			// 0x00         ???
+			// 0x21, 0x7f  +spri, reduced shading
+			// 0x80        +rect, shading
+			// 0x81  0x88   rect, no shading
+			// 0x89  0x90  +rect, shading
+			// 0x91  0x96  +spri, no shading
+			let draw_wbg = tile <= 0x80 || tile >= 0x89;
 			if tile == 0x80 {
 				r = 255;
 				g = 255;
