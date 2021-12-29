@@ -34,7 +34,7 @@ pub fn get_stats(command_vec: &mut Vec<String>) {
 }
 
 pub fn get_tiles(command_vec: &mut Vec<String>) {
-	command_vec.push("{\"commandName\":\"getTiles\",\"size\":31}".to_string());
+	command_vec.push("{\"commandName\":\"getTiles\",\"size\":50}".to_string());
 }
 
 pub fn add_chat_message(command_vec: &mut Vec<String>, text: String) {

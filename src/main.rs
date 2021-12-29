@@ -78,15 +78,7 @@ fn lop() {
 		let mut apio = Apioform::new(user, pass);
 		apio.build();
 		player_apio.push(apio);
-		let mut player = Player {
-			pindex: i as i32, x: 0, y: 0, health: 5,
-			rx: 0, ry: 0,
-			walks_left: 0, play_mode: 0,
-			user: infvec[i * 2].to_string(),
-			walks_to: [255; 67*67],
-			enemies: Vec::new(),
-			comque: Vec::new()
-		};
+		let mut player = Player::new(infvec[i * 2].to_string());
 		qc::initial_commands(&mut player.comque);
 		println!("Set up player {}", player.user);
 		players.push(player);
@@ -114,8 +106,23 @@ fn lop() {
 				Event::MouseMotion { x, y, .. } => {
 					act_pli = ((x / 480) as usize) + ((y / 480) as usize) * 3;
 				},
-				Event::MouseButtonDown { x, y, .. } => {
-					players[act_pli].try_walk(x % 480, y % 480, &world_tiles);
+				Event::MouseButtonDown { x, y, mouse_btn, .. } => {
+					match mouse_btn {
+					sdl2::mouse::MouseButton::Left => {
+						if players[act_pli].play_mode != 0 {
+							players[act_pli].play_mode = 0;
+						} else {
+							players[act_pli].try_walk(x % 480, y % 480, &world_tiles);
+						}
+					},
+					sdl2::mouse::MouseButton::Right => {
+						let rx = x - 240;
+						let ry = y - 240;
+						let m: u8 = (((ry > rx) as u8) * 3) ^ ((ry > -rx) as u8);
+						players[act_pli].play_mode = m + 1;
+					},
+					_ => ()
+					}
 				},
 				_ => {}
 			}

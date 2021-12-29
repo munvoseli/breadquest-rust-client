@@ -36,11 +36,18 @@ pub struct Player {
 	pub comque: Vec<String>,
 	pub enemies: Vec<Enemy>,
 	pub walks_to: [u8; 67*67],
-	pub walks_left: u8,
+	pub dwalks_left: u8,
 	pub play_mode: u8, // manual / bore
 }
 
 impl Player {
+	pub fn new(user: String) -> Self {
+		Self {
+			pindex: 0, x: 0, y: 0, rx: 0, ry: 0, health: 0,
+			user: user, comque: Vec::new(), enemies: Vec::new(),
+			walks_to: [255; 67*67], dwalks_left: 64, play_mode: 0
+		}
+	}
 	pub fn get_walk_relpos(&self, x: i32, y: i32) -> u8 {
 		if x.abs() > 33 || y.abs() > 33 {
 			return 255;
@@ -117,6 +124,15 @@ impl Player {
 			}
 			coords = newcoords;
 		}
+	}
+
+	pub fn is_near_enemy(&self, dist: i32) -> bool {
+		for enemy in &self.enemies {
+			if (enemy.x - self.x).abs() < dist && (enemy.y - self.y).abs() < dist {
+				return true;
+			}
+		}
+		false
 	}
 
 	pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, world_tiles: &WorldTiles) {
@@ -208,6 +224,7 @@ impl Player {
 				} else if ty.eq("setLocalPlayerPos") {
 					self.x = command["pos"]["x"].as_i32().unwrap();
 					self.y = command["pos"]["y"].as_i32().unwrap();
+					self.generate_pathing(&world_tiles);
 				} else if ty.eq("addEntity") {
 					cq_add_entity(command, &mut self.enemies);
 				} else if ty.eq("removeAllEntities") {
@@ -225,8 +242,27 @@ impl Player {
 		if has_recv {
 			println!("{}", recvcom);
 		}
-		if self.walks_left < 32 {
-			self.walks_left = self.walks_left + 1;
+		// if bore
+		if self.play_mode >= 1 {
+			if self.dwalks_left > 48 {
+				qc::walk(&mut self.comque, self.play_mode - 1);
+				self.dwalks_left = self.dwalks_left - 2;
+				     if self.play_mode == 1 { self.y -= 1; }
+				else if self.play_mode == 2 { self.x += 1; }
+				else if self.play_mode == 3 { self.y += 1; }
+				else if self.play_mode == 4 { self.x -= 1; }
+			}
+			while self.is_near_enemy(8) && self.dwalks_left > 2 {
+				qc::walk(&mut self.comque, self.play_mode - 1);
+				self.dwalks_left = self.dwalks_left - 2;
+				     if self.play_mode == 1 { self.y -= 1; }
+				else if self.play_mode == 2 { self.x += 1; }
+				else if self.play_mode == 3 { self.y += 1; }
+				else if self.play_mode == 4 { self.x -= 1; }
+			}
+		}
+		if self.dwalks_left < 64 {
+			self.dwalks_left = self.dwalks_left + 1;
 		}
 		qc::send_commands(apio, &self.comque);
 		self.comque = Vec::new();
