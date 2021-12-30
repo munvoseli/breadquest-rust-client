@@ -61,7 +61,7 @@ fn lop() {
 //	let tcpclient = login_socket(infostr.0, infostr.1);
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
-	let window = video_subsystem.window("h", 1440, 480)
+	let window = video_subsystem.window("h", 1440, 960)
 	.position(480, 0).build().unwrap();
 	let mut canvas = window.into_canvas().build().unwrap();
 	let mut i:i32 = 0;
@@ -79,6 +79,7 @@ fn lop() {
 		apio.build();
 		player_apio.push(apio);
 		let mut player = Player::new(infvec[i * 2].to_string());
+		player.pindex = i as i32;
 		qc::initial_commands(&mut player.comque);
 		println!("Set up player {}", player.user);
 		players.push(player);
@@ -116,10 +117,19 @@ fn lop() {
 						}
 					},
 					sdl2::mouse::MouseButton::Right => {
-						let rx = x - 240;
-						let ry = y - 240;
+						let rx = (x % 480) - 240;
+						let ry = (y % 480) - 240;
 						let m: u8 = (((ry > rx) as u8) * 3) ^ ((ry > -rx) as u8);
 						players[act_pli].play_mode = m + 1;
+					},
+					sdl2::mouse::MouseButton::Middle => {
+						println!(
+							"{} ( {} {} ) {}/5",
+							players[act_pli].user,
+							players[act_pli].x,
+							players[act_pli].y,
+							players[act_pli].health
+						);
 					},
 					_ => ()
 					}
@@ -134,11 +144,13 @@ fn lop() {
 		// now do things for each player
 		for mut player in &mut players {
 			if i % 64 == 0 {
-				qc::get_entities(&mut player.comque);
 				qc::get_tiles(&mut player.comque);
 				qc::assert_pos(&mut player.comque);
 				qc::get_stats(&mut player.comque);
 //				qc::add_chat_message(&mut player.comque, "test".to_string());
+			}
+			if i % 32 == 0 {
+				qc::get_entities(&mut player.comque);
 			}
 			let apio = &mut player_apio[player.pindex as usize];
 			player.game_step(apio, &mut canvas, &mut world_tiles);

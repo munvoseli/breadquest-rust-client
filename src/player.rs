@@ -25,6 +25,8 @@ fn cq_add_entity(command: &json::JsonValue, enemies: &mut Vec<Enemy>) {
 		});
 }
 
+const MAXTSB: u8 = 64; // should only have to go up to like 16
+
 pub struct Player {
 	pub pindex: i32,
 	pub x: i32,
@@ -37,6 +39,7 @@ pub struct Player {
 	pub enemies: Vec<Enemy>,
 	pub walks_to: [u8; 67*67],
 	pub dwalks_left: u8,
+	pub time_since_break: u8,
 	pub play_mode: u8, // manual / bore
 }
 
@@ -45,7 +48,8 @@ impl Player {
 		Self {
 			pindex: 0, x: 0, y: 0, rx: 0, ry: 0, health: 0,
 			user: user, comque: Vec::new(), enemies: Vec::new(),
-			walks_to: [255; 67*67], dwalks_left: 64, play_mode: 0
+			walks_to: [255; 67*67], dwalks_left: 64, play_mode: 0,
+			time_since_break: MAXTSB,
 		}
 	}
 	pub fn get_walk_relpos(&self, x: i32, y: i32) -> u8 {
@@ -244,25 +248,44 @@ impl Player {
 		}
 		// if bore
 		if self.play_mode >= 1 {
+		for i in 0..1 {
+			if self.time_since_break < 20 {
+				break;
+			}
+			let ox: i32 = [5,  0,1,0,-1][self.play_mode as usize];
+			let oy: i32 = [5,  -1,0,1,0][self.play_mode as usize];
+			if self.time_since_break == 20 {
+				qc::walk(&mut self.comque, self.play_mode - 1);
+				self.dwalks_left = self.dwalks_left - 2;
+				self.x += ox;
+				self.y += oy;
+			}
+			let tile = world_tiles.get_tile_at(self.x+ox, self.y+oy);
+			if tile >= 0x81 && tile <= 0x88 {
+				qc::remove_tile(&mut self.comque, self.play_mode - 1);
+				world_tiles.set_tile_at(self.x+ox, self.y+oy, 2);
+				self.time_since_break = 0;
+				break;
+			}
 			if self.dwalks_left > 48 {
 				qc::walk(&mut self.comque, self.play_mode - 1);
 				self.dwalks_left = self.dwalks_left - 2;
-				     if self.play_mode == 1 { self.y -= 1; }
-				else if self.play_mode == 2 { self.x += 1; }
-				else if self.play_mode == 3 { self.y += 1; }
-				else if self.play_mode == 4 { self.x -= 1; }
+				self.x += ox;
+				self.y += oy;
 			}
 			while self.is_near_enemy(8) && self.dwalks_left > 2 {
 				qc::walk(&mut self.comque, self.play_mode - 1);
 				self.dwalks_left = self.dwalks_left - 2;
-				     if self.play_mode == 1 { self.y -= 1; }
-				else if self.play_mode == 2 { self.x += 1; }
-				else if self.play_mode == 3 { self.y += 1; }
-				else if self.play_mode == 4 { self.x -= 1; }
+				self.x += ox;
+				self.y += oy;
 			}
+		}
 		}
 		if self.dwalks_left < 64 {
 			self.dwalks_left = self.dwalks_left + 1;
+		}
+		if self.time_since_break < MAXTSB {
+			self.time_since_break += 1;
 		}
 		qc::send_commands(apio, &self.comque);
 		self.comque = Vec::new();
