@@ -163,7 +163,7 @@ impl Player {
 				// 0x89  0x90  +rect, shading
 				// 0x91  0x96  +spri, no shading
 				let draw_wbg = tile <= 0x80 || tile >= 0x89;
-				if tile == 0x80 {
+				if tile == 0x80 || (tile >= 0x89 && tile <= 0x90) || (tile >= 0x21 && tile <= 0x7f) {
 					r = 255;
 					g = 255;
 					b = 255;
@@ -186,8 +186,23 @@ impl Player {
 				g = (g as f32 * mul) as u8;
 				b = (b as f32 * mul) as u8;
 				canvas.set_draw_color(Color::RGB(r,g,b));
-				let r = sdl2::rect::Rect::new((x + 60 * (self.pindex % 3)) * 8, (y + 60 * (self.pindex / 3)) * 8, 8, 8);
-				canvas.fill_rect(Some(r)).ok();
+				let rct = sdl2::rect::Rect::new((x + 60 * (self.pindex % 3)) * 8, (y + 60 * (self.pindex / 3)) * 8, 8, 8);
+				canvas.fill_rect(Some(rct)).ok();
+				if tile >= 0x21 && tile <= 0x7f {
+					canvas.set_draw_color(Color::RGB(0,0,0));
+					let rct = sdl2::rect::Rect::new((x + 60 * (self.pindex % 3)) * 8 + 2, (y + 60 * (self.pindex / 3)) * 8 + 2, 4, 4);
+					canvas.fill_rect(Some(rct)).ok();
+					
+				}
+				if tile >= 0x89 && tile <= 0x90 {
+					let r = [255,255,255,  0,  0,  0,255,170][tile as usize - 0x89];
+					let g = [  0,170,255,255,255,  0,  0,170][tile as usize - 0x89];
+					let b = [  0,  0,  0,  0,255,255,255,170][tile as usize - 0x89];
+					canvas.set_draw_color(Color::RGB(r,g,b));
+					let rct = sdl2::rect::Rect::new((x + 60 * (self.pindex % 3)) * 8 + 2, (y + 60 * (self.pindex / 3)) * 8 + 2, 4, 4);
+					canvas.fill_rect(Some(rct)).ok();
+					
+				}
 			}
 		}
 		canvas.set_draw_color(Color::RGB(255,0,85));
@@ -202,6 +217,18 @@ impl Player {
 		canvas.set_draw_color(Color::RGB(85,0,255));
 		let r = sdl2::rect::Rect::new(shsize * 8 + 1 + cou, shsize * 8 + 1 + cov, 6, 6);
 		canvas.fill_rect(Some(r)).ok();
+	}
+
+	pub fn try_step(&mut self, world_tiles: &mut WorldTiles, dir: u8, ox: i32, oy: i32) -> bool {
+		let tile = world_tiles.get_tile_at(self.x+ox, self.y+oy);
+		if (tile >= 0x81 && tile <= 0x88) || tile == 0x95 || tile == 0x96 {
+			return false;
+		}
+		qc::walk(&mut self.comque, dir);
+		self.dwalks_left = self.dwalks_left - 2;
+		self.x += ox;
+		self.y += oy;
+		true
 	}
 
 	pub fn game_step(&mut self, apio: &mut Apioform, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, world_tiles: &mut WorldTiles) {
@@ -249,12 +276,12 @@ impl Player {
 		// if bore
 		if self.play_mode >= 1 {
 		for i in 0..1 {
-			if self.time_since_break < 20 {
+			if self.time_since_break < 16 {
 				break;
 			}
 			let ox: i32 = [5,  0,1,0,-1][self.play_mode as usize];
 			let oy: i32 = [5,  -1,0,1,0][self.play_mode as usize];
-			if self.time_since_break == 20 {
+			if self.time_since_break == 16 {
 				qc::walk(&mut self.comque, self.play_mode - 1);
 				self.dwalks_left = self.dwalks_left - 2;
 				self.x += ox;
@@ -267,11 +294,11 @@ impl Player {
 				self.time_since_break = 0;
 				break;
 			}
-			if self.dwalks_left > 48 {
-				qc::walk(&mut self.comque, self.play_mode - 1);
-				self.dwalks_left = self.dwalks_left - 2;
-				self.x += ox;
-				self.y += oy;
+			while self.dwalks_left > 48 {
+				let success = self.try_step(world_tiles, self.play_mode - 1, ox, oy);
+				if !success {
+					break;
+				}
 			}
 			while self.is_near_enemy(8) && self.dwalks_left > 2 {
 				qc::walk(&mut self.comque, self.play_mode - 1);

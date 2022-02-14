@@ -1,0 +1,60 @@
+:rest-zone
+111	31	Spawn
+-1719	-2094	Stantown
+175	-3775	Tuxtown
+-1367	-2991	Dusty Outpost
+-815	-3617	Musty Outpost
+-4279	-10639	Mel 1
+-1731	-40	Mel 2 (does not exist apparently?)
+-2024	-410	Mel 3
+-23	5908	origin down  Mel 4 / rainbow lounge
+-59	7651	origin down  Mel 5
+47	22628	origin down  Mel 6
+-60	25833	origin down  Mel 7
+22	37081	2021-05-24	origin down  Mel 8
+8640	50014	2021-05-24	Mel 9
+200	25812	2021-05-30	Mel A
+9138	100003	2021-05-31	Mel B
+95	98666	2021-05-31	origin down Mel C
+15701	-596	Wikitown
+9103	-617	Small Wikitown
+16044	797	Boteram cave
+-3557	-1100	WhileTrue Zone
+14132	12336	Boteram vertical 1
+15704	21858	Boteram vertical 2
+15678	29352	2021-05-24	Boteram vertical 3 by melody, a few days before 2021-05-24
+15669	33596	Boteram vertical 4
+15811	42440	2021-03-28	Boteram vertical deep bread
+15659	68653	2021-05-31	Boteram vertical 5 by melody
+15770	85222	2021-05-31	Boteram vertical 6 by melody
+15598	87249	2021-06-13	Boteram vertical 7 by melody
+15593	93143	2021-06-13	Boteram vertical 8 by melody
+14672	99938	2021-06-14	Boteram vertical 9 by melody
+15696	61392	2021-09-05	Boteram vertical A by melody
+7529	22	2020-05-16	ubq323
+11886	-176	2021-03-05	ubq323
+9127	141	poggi big sex
+-102	850	ultlang
+950	-2419	2021-12-29	darxoon
+
+:landmark
+1000	100	bruh zone
+-2671	-10	TOCC
+-4683	-6020	Lone Oven
+-4794	-6035	Lone Hospital
+15743	10182	People break me
+15702	39573	sus
+345	18	Esperanto
+11605	-131	Heav base
+-3264	-2112	coral test chunk
+5000	0	Boteram 5000 thing
+0	-1100	empire
+
+:tunnel
+hv	xmin	??	ymax
+h	-186	23195	-596	Wiki road
+h	-3548	-2759	-1100	WhileTrue V0tgil tunnel
+v	15701	-596		Boteram vertical
+v	-1000	-3551	-2991	Pointless road
+v	-3106	-1100	0	[unnamed road]
+v	9000	0	4000	[unnamed road]
