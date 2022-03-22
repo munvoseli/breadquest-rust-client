@@ -1,4 +1,3 @@
 /target
-/save
-config.txt
+/save/config.txt
 *.swp
