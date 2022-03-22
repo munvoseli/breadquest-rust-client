@@ -9,16 +9,28 @@ int main(int argc, char** argv) {
 		int j = 0;
 		int c;
 		for (int k = 0; k < 9; ++k) fgetc(fp);
+		char show = 0;
+		while ((c = fgetc(fp)) != EOF) {
+			if (c == 0x96 || c == 0x95) {
+				show = 1;
+				break;
+			}
+		}
+		if (show == 0) goto no;
+		rewind(fp);
+		for (int k = 0; k < 9; ++k) fgetc(fp);
 		while ((c = fgetc(fp)) != EOF) {
 //			putchar(hex[c >> 4]);
 //			putchar(hex[c & 15]);
 			if (c < 2) putchar('-');
 			else if (c == 2) putchar('?');
-			else if (c < 0x80) putchar('+');
+			else if (c <= 0x20) putchar('?');
+			else if (c <= 0x7f) putchar(c);
 			else if (c == 0x80) putchar(' ');
 			else if (c <= 0x88) putchar('#');
 			else if (c <= 0x90) putchar('.');
-			else if (c <= 0x94) putchar('n');
+			else if (c <= 0x93) putchar('n');
+			else if (c == 0x94) putchar('b');
 			else if (c <= 0x96) putchar('!');
 			else putchar('h');
 			++j;
@@ -26,7 +38,7 @@ int main(int argc, char** argv) {
 		}
 		putchar(10);
 		putchar(10);
-		fclose(fp);
+	no:	fclose(fp);
 	}
 	return 0;
 }
