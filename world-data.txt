@@ -1,30 +1,30 @@
 :rest-zone
-111	31	Spawn
--1719	-2094	Stantown
-175	-3775	Tuxtown
--1367	-2991	Dusty Outpost
--815	-3617	Musty Outpost
--4279	-10639	Mel 1
--1731	-40	Mel 2 (does not exist apparently?)
--2024	-410	Mel 3
+111	31		Spawn
+-1719	-2094	<2018-11-18	Stantown
+175	-3775	2018-04-22	Tuxtown
+-1367	-2991	<2019-10-31	Dusty Outpost
+-815	-3617	<2019-10-31	Musty Outpost
+-4279	-10639		Mel 1
+-1731	-40		Mel 2 (does not exist apparently?)
+-2024	-410		Mel 3
 -62	1859	2022-03-26	origin down
--23	5908	origin down  Mel 4 / rainbow lounge
--59	7651	origin down  Mel 5
-47	22628	origin down  Mel 6
--60	25833	origin down  Mel 7
+-23	5908		origin down  Mel 4 / rainbow lounge
+-59	7651		origin down  Mel 5
+47	22628		origin down  Mel 6
+-60	25833		origin down  Mel 7
 22	37081	2021-05-24	origin down  Mel 8
 8640	50014	2021-05-24	Mel 9
-200	25812	2021-05-30	Mel A
+200	25812	2021-05-30	origin down  Mel A
 9138	100003	2021-05-31	Mel B
-95	98666	2021-05-31	origin down Mel C
-15701	-596	Wikitown
-9103	-617	Small Wikitown
-16044	797	Boteram cave
--3557	-1100	WhileTrue Zone
-14132	12336	Boteram vertical 1
-15704	21858	Boteram vertical 2
+95	98666	2021-05-31	origin down  Mel C
+15701	-596		Wikitown
+9103	-617		Small Wikitown
+16044	797		Boteram cave
+-3557	-1100		WhileTrue Zone
+14132	12336		Boteram vertical 1
+15704	21858		Boteram vertical 2
 15678	29352	2021-05-24	Boteram vertical 3 by melody, a few days before 2021-05-24
-15669	33596	Boteram vertical 4
+15669	33596		Boteram vertical 4
 15811	42440	2021-03-28	Boteram vertical deep bread
 15659	68653	2021-05-31	Boteram vertical 5 by melody
 15770	85222	2021-05-31	Boteram vertical 6 by melody
@@ -34,8 +34,8 @@
 15696	61392	2021-09-05	Boteram vertical A by melody
 7529	22	2020-05-16	ubq323
 11886	-176	2021-03-05	ubq323
-9127	141	poggi big sex
--102	850	ultlang
+9127	141		poggi big sex
+-102	850	2020-12-14?	origin down  ultlang
 950	-2419	2021-12-29	darxoon
 
 :landmark
