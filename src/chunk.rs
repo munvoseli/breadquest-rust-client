@@ -91,16 +91,20 @@ impl WorldTiles {
 		self.chunks.push(Chunk::new_maybe_file(x, y));
 		self.chunks.len() - 1
 	}
-	pub fn get_tile_at(&self, x: i32, y: i32) -> u8 {
+	pub fn get_tile_at(&mut self, x: i32, y: i32) -> u8 {
 		let cx = x & -128i32;
 		let cy = y & -128i32;
-		for chunk in &self.chunks {
-			if chunk.x == cx && chunk.y == cy {
-				let i = (x & 0x7F) | ((y & 0x7F) << 7);
-				return chunk.tiles[i as usize];
-			}
-		}
-		1
+		let i = self.get_chunk_id_at(cx, cy);
+		let chunk = &self.chunks[i];
+		let i = (x & 127) | ((y & 127) << 7);
+		chunk.tiles[i as usize]
+//		for chunk in &self.chunks {
+//			if chunk.x == cx && chunk.y == cy {
+//				let i = (x & 0x7F) | ((y & 0x7F) << 7);
+//				return chunk.tiles[i as usize];
+//			}
+//		}
+//		1
 	}
 	pub fn set_tile_at(&mut self, x: i32, y: i32, tile: u8) {
 		let i = self.get_chunk_id_at(x & -128i32, y & -128i32);

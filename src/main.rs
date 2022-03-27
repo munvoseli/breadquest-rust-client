@@ -12,6 +12,7 @@ use std::fs::File;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::image::{InitFlag, LoadTexture};
 use std::time::Duration;
 use std::io::{Write, Read, stdout};
 use crate::apio::Apioform as Apioform;
@@ -22,6 +23,7 @@ mod qc;
 mod apio;
 mod chunk;
 mod player;
+mod statbox;
 
 pub struct Enemy { x: i32, y: i32, }
 
@@ -64,10 +66,14 @@ fn lop() {
 	let window = video_subsystem.window("h", 1440, 960)
 	.position(480, 0).build().unwrap();
 	let mut canvas = window.into_canvas().build().unwrap();
-	let mut i:i32 = 0;
+
+	let _image_context = sdl2::image::init(InitFlag::PNG);
+	let texture_creator = canvas.texture_creator();
+	let texture = texture_creator.load_texture(std::path::Path::new("sprites.png")).unwrap();
+
+	let mut i: i32 = 0;
 	let mut event_pump = sdl_context.event_pump().unwrap();
 	let mut players: Vec<Player> = Vec::new();
-	let mut player_wss: Vec<String> = Vec::new();
 	let infvec = get_login_name();
 	let mut player_apio: Vec<Apioform> = Vec::new();
 	let mut world_tiles = WorldTiles::new();
@@ -113,7 +119,7 @@ fn lop() {
 						if players[act_pli].play_mode != 0 {
 							players[act_pli].play_mode = 0;
 						} else {
-							players[act_pli].try_walk(x % 480, y % 480, &world_tiles);
+							players[act_pli].try_walk(x % 480, y % 480, &mut world_tiles);
 						}
 					},
 					sdl2::mouse::MouseButton::Right => {

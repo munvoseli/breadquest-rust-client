@@ -63,7 +63,7 @@ impl Player {
 		let i = (x + 33) + (y + 33) * 67;
 		self.walks_to[i as usize] = tile;
 	}
-	pub fn try_walk(&mut self, xpix: i32, ypix: i32, world_tiles: &WorldTiles) {
+	pub fn try_walk(&mut self, xpix: i32, ypix: i32, world_tiles: &mut WorldTiles) {
 		let sctx: i32 = xpix / 8;
 		let scty: i32 = ypix / 8;
 		let mut relx = sctx - 30;
@@ -96,8 +96,7 @@ impl Player {
 		qc::assert_pos(&mut self.comque);
 		qc::get_tiles(&mut self.comque);
 	}
-
-	pub fn generate_pathing(&mut self, world_tiles: &WorldTiles) {
+	pub fn generate_pathing(&mut self, world_tiles: &mut WorldTiles) {
 		let mut i = 0;
 		for y in -33..=33 { for x in -33..=33 {
 			let tile = world_tiles.get_tile_at(self.x + x, self.y + y);
@@ -139,14 +138,16 @@ impl Player {
 		false
 	}
 
-	pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, world_tiles: &WorldTiles) {
+	pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, world_tiles: &mut WorldTiles) {
 		let ssize: i32 = 60;
 		let shsize: i32 = ssize >> 1;
 		let cou = 60 * 8 * (self.pindex % 3);
 		let cov = 60 * 8 * (self.pindex / 3);
+		let camx = if self.rx == 0 && self.ry == 0 { self.x } else { self.rx };
+		let camy = if self.rx == 0 && self.ry == 0 { self.y } else { self.ry };
 		for y in 0..ssize {
 			for x in 0..ssize {
-				let tile = world_tiles.get_tile_at(self.x + x - shsize + self.rx, self.y + y - shsize + self.ry);
+				let tile = world_tiles.get_tile_at(camx + x - shsize, camy + y - shsize);
 				let mut r:u8;
 				let mut g:u8;
 				let mut b:u8;
@@ -251,11 +252,11 @@ impl Player {
 				let ty = String::from(typ);
 				if ty.eq("setTiles") {
 					cq_set_tiles(command, world_tiles);
-					self.generate_pathing(&world_tiles);
+					self.generate_pathing(world_tiles);
 				} else if ty.eq("setLocalPlayerPos") {
 					self.x = command["pos"]["x"].as_i32().unwrap();
 					self.y = command["pos"]["y"].as_i32().unwrap();
-					self.generate_pathing(&world_tiles);
+					self.generate_pathing(world_tiles);
 				} else if ty.eq("addEntity") {
 					cq_add_entity(command, &mut self.enemies);
 				} else if ty.eq("removeAllEntities") {
@@ -274,14 +275,14 @@ impl Player {
 			println!("{}", recvcom);
 		}
 		// if bore
-		if self.play_mode >= 1 {
+		if self.play_mode >= 1 && self.play_mode <= 5 {
 		for i in 0..1 {
-			if self.time_since_break < 16 {
+			if self.time_since_break < 18 {
 				break;
 			}
 			let ox: i32 = [5,  0,1,0,-1][self.play_mode as usize];
 			let oy: i32 = [5,  -1,0,1,0][self.play_mode as usize];
-			if self.time_since_break == 16 {
+			if self.time_since_break == 18 {
 				qc::walk(&mut self.comque, self.play_mode - 1);
 				self.dwalks_left = self.dwalks_left - 2;
 				self.x += ox;
@@ -316,6 +317,6 @@ impl Player {
 		}
 		qc::send_commands(apio, &self.comque);
 		self.comque = Vec::new();
-		self.draw(canvas, &world_tiles);
+		self.draw(canvas, world_tiles);
 	}
 }
