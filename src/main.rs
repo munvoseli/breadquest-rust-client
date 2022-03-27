@@ -101,6 +101,7 @@ fn lop() {
 				Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
 					break 'running
 				},
+				Event::KeyDown { keycode: Some(Keycode::I), .. } => { players[act_pli].rx = players[act_pli].x; players[act_pli].ry = players[act_pli].y },
 				Event::KeyDown { keycode: Some(Keycode::H), .. } => { players[act_pli].rx -= 8; },
 				Event::KeyDown { keycode: Some(Keycode::J), .. } => { players[act_pli].ry += 8; },
 				Event::KeyDown { keycode: Some(Keycode::K), .. } => { players[act_pli].ry -= 8; },

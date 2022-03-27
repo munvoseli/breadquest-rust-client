@@ -1,3 +1,5 @@
+# vim: ts=16
+
 :rest-zone
 111	31		Spawn
 -1719	-2094	<2018-11-18	Stantown
@@ -17,8 +19,10 @@
 200	25812	2021-05-30	origin down  Mel A
 9138	100003	2021-05-31	Mel B
 95	98666	2021-05-31	origin down  Mel C
-15701	-596		Wikitown
+7529	22	2020-05-16	origin east ubq323
 9103	-617		Small Wikitown
+11886	-176	2021-03-05	origin east ubq323
+15701	-596		Wikitown
 16044	797		Boteram cave
 -3557	-1100		WhileTrue Zone
 14132	12336		Boteram vertical 1
@@ -32,8 +36,6 @@
 15593	93143	2021-06-13	Boteram vertical 8 by melody
 14672	99938	2021-06-14	Boteram vertical 9 by melody
 15696	61392	2021-09-05	Boteram vertical A by melody
-7529	22	2020-05-16	ubq323
-11886	-176	2021-03-05	ubq323
 9127	141		poggi big sex
 -102	850	2020-12-14?	origin down  ultlang
 950	-2419	2021-12-29	darxoon
