@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 
 use crate::player::Player;
 
-struct Chunk {
+pub struct Chunk {
 	x: i32,
 	y: i32,
 	tiles: [u8; 128 * 128],
@@ -140,10 +140,14 @@ impl Chunk {
 		let mut f = File::create(format!("save/{}_{}.dat", self.x, self.y)).unwrap();
 		f.write(&buf).unwrap();
 	}
+	pub fn get_tile_at_off(&mut self, x: i32, y: i32) -> u8 {
+		let i = (x | (y << 7)) as usize;
+		self.tiles[i]
+	}
 }
 
 pub struct WorldTiles {
-	chunks: Vec<Chunk>
+	pub chunks: Vec<Chunk>
 }
 
 impl WorldTiles {
@@ -155,7 +159,7 @@ impl WorldTiles {
 		}
 		return false;
 	}
-	fn get_chunk_id_at(&mut self, x: i32, y: i32) -> usize {
+	pub fn get_chunk_id_at(&mut self, x: i32, y: i32) -> usize {
 		for i in 0..self.chunks.len() {
 			if self.chunks[i].x == x && self.chunks[i].y == y {
 				return i;

@@ -63,9 +63,9 @@ fn lop() {
 //	let tcpclient = login_socket(infostr.0, infostr.1);
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
-	let window = video_subsystem.window("h", 1440, 960)
+	let window = video_subsystem.window("h", 1920, 960)
 	.position(480, 0).build().unwrap();
-	let winwi = 1440i32;
+	let winwi = 1920i32;
 	let winhi = 960i32;
 	let mut canvas = window.into_canvas().build().unwrap();
 
@@ -99,7 +99,7 @@ fn lop() {
 	let mut cam_tracks = true;
 	'running: loop {
 		let now = std::time::Instant::now();
-		canvas.present();
+		let now2 = std::time::Instant::now();
 		for event in event_pump.poll_iter() {
 			match event {
 				Event::Quit {..} |
@@ -174,7 +174,11 @@ fn lop() {
 			cam.0 = players[0].x;
 			cam.1 = players[0].y;
 		}
+		if now2.elapsed() > Duration::new(0, 1000000000u32 / 2) {
+			println!("long time to draw {:?}", now2);
+		}
 		statbox::draw_world(&players, &mut canvas, &mut world_tiles, &cam, &texture, winwi, winhi);
+		canvas.present();
 		i = i + 1;
 		//println!("elapsed: {:?}", now.elapsed());
 		let steptime = Duration::new(0, 1000000000u32 / 32);
