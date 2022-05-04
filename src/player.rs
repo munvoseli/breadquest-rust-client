@@ -63,15 +63,11 @@ impl Player {
 		let i = (x + 33) + (y + 33) * 67;
 		self.walks_to[i as usize] = tile;
 	}
-	pub fn try_walk(&mut self, xpix: i32, ypix: i32, world_tiles: &mut WorldTiles) {
-		let sctx: i32 = xpix / 8;
-		let scty: i32 = ypix / 8;
-		let mut relx = sctx - 30;
-		let mut rely = scty - 30;
-		let crx = relx;
-		let cry = rely;
-		let steps = self.get_walk_relpos(relx, rely);//get_tile_at_relpos(player, relx, rely, player.walks_to);
-		//println!("{} {} {}", relx, rely, steps);
+	pub fn try_walk(&mut self, crx: i32, cry: i32, world_tiles: &mut WorldTiles) {
+		let mut relx = crx;
+		let mut rely = cry;
+		self.generate_pathing(world_tiles);
+		let steps = self.get_walk_relpos(relx, rely);
 		let mut walks: Vec<u8> = Vec::new();
 		for i in 0..steps {
 			for (x, y, d) in [(0,-1,2), (1,0,3), (0,1,0), (-1,0,1)] {
@@ -84,7 +80,6 @@ impl Player {
 				}
 			}
 		}
-		//println!("{:?}", walks);
 		for i in 0..steps {
 			if let Some(d) = walks.pop() {
 				qc::walk(&mut self.comque, d);
@@ -92,7 +87,6 @@ impl Player {
 		}
 		self.x += crx;
 		self.y += cry;
-		self.generate_pathing(world_tiles);
 		qc::assert_pos(&mut self.comque);
 		qc::get_tiles(&mut self.comque);
 	}
@@ -284,7 +278,7 @@ impl Player {
 			let oy: i32 = [5,  -1,0,1,0][self.play_mode as usize];
 			if self.time_since_break == 18 {
 				qc::walk(&mut self.comque, self.play_mode - 1);
-				self.dwalks_left = self.dwalks_left - 2;
+				self.dwalks_left -= 2;
 				self.x += ox;
 				self.y += oy;
 			}
@@ -317,6 +311,6 @@ impl Player {
 		}
 		qc::send_commands(apio, &self.comque);
 		self.comque = Vec::new();
-		self.draw(canvas, world_tiles);
+//		self.draw(canvas, world_tiles);
 	}
 }

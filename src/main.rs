@@ -65,6 +65,8 @@ fn lop() {
 	let video_subsystem = sdl_context.video().unwrap();
 	let window = video_subsystem.window("h", 1440, 960)
 	.position(480, 0).build().unwrap();
+	let winwi = 1440i32;
+	let winhi = 960i32;
 	let mut canvas = window.into_canvas().build().unwrap();
 
 	let _image_context = sdl2::image::init(InitFlag::PNG);
@@ -93,7 +95,10 @@ fn lop() {
 	println!("hhh");
 	let mut pindex: i32 = 0;
 	let mut act_pli: usize = 0;
+	let mut cam = (0i32, 0i32);
+	let mut cam_tracks = true;
 	'running: loop {
+		let now = std::time::Instant::now();
 		canvas.present();
 		for event in event_pump.poll_iter() {
 			match event {
@@ -101,18 +106,18 @@ fn lop() {
 				Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
 					break 'running
 				},
-				Event::KeyDown { keycode: Some(Keycode::I), .. } => { players[act_pli].rx = players[act_pli].x; players[act_pli].ry = players[act_pli].y },
-				Event::KeyDown { keycode: Some(Keycode::H), .. } => { players[act_pli].rx -= 8; },
-				Event::KeyDown { keycode: Some(Keycode::J), .. } => { players[act_pli].ry += 8; },
-				Event::KeyDown { keycode: Some(Keycode::K), .. } => { players[act_pli].ry -= 8; },
-				Event::KeyDown { keycode: Some(Keycode::L), .. } => { players[act_pli].rx += 8; },
-				Event::KeyDown { keycode: Some(Keycode::R), .. } => { players[act_pli].rx = 0; players[act_pli].ry = 0; },
+				Event::KeyDown { keycode: Some(Keycode::I), .. } => { cam_tracks = true; },
+				Event::KeyDown { keycode: Some(Keycode::H), .. } => { cam.0 -= 8; cam_tracks = false; },
+				Event::KeyDown { keycode: Some(Keycode::J), .. } => { cam.1 += 8; cam_tracks = false; },
+				Event::KeyDown { keycode: Some(Keycode::K), .. } => { cam.1 -= 8; cam_tracks = false; },
+				Event::KeyDown { keycode: Some(Keycode::L), .. } => { cam.0 += 8; cam_tracks = false; },
+				Event::KeyDown { keycode: Some(Keycode::R), .. } => { cam.0 = 0; cam.1 = 0; cam_tracks = false; },
 				Event::KeyDown { keycode: Some(Keycode::W), .. } => { qc::remove_tile(&mut players[act_pli].comque, 0); },
 				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::remove_tile(&mut players[act_pli].comque, 1); },
 				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::remove_tile(&mut players[act_pli].comque, 2); },
 				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::remove_tile(&mut players[act_pli].comque, 3); },
 				Event::MouseMotion { x, y, .. } => {
-					act_pli = ((x / 480) as usize) + ((y / 480) as usize) * 3;
+					act_pli = 0;//((x / 480) as usize) + ((y / 480) as usize) * 3;
 				},
 				Event::MouseButtonDown { x, y, mouse_btn, .. } => {
 					match mouse_btn {
@@ -120,12 +125,15 @@ fn lop() {
 						if players[act_pli].play_mode != 0 {
 							players[act_pli].play_mode = 0;
 						} else {
-							players[act_pli].try_walk(x % 480, y % 480, &mut world_tiles);
+							let wc = statbox::mouse_to_world(&(x, y), &cam, winwi, winhi);
+							let relx = wc.0 - players[act_pli].x;
+							let rely = wc.1 - players[act_pli].y;
+							players[act_pli].try_walk(relx, rely, &mut world_tiles);
 						}
 					},
 					sdl2::mouse::MouseButton::Right => {
-						let rx = (x % 480) - 240;
-						let ry = (y % 480) - 240;
+						let rx = x - winwi / 2;
+						let ry = y - winhi / 2;
 						let m: u8 = (((ry > rx) as u8) * 3) ^ ((ry > -rx) as u8);
 						players[act_pli].play_mode = m + 1;
 					},
@@ -151,19 +159,31 @@ fn lop() {
 		// now do things for each player
 		for mut player in &mut players {
 			if i % 64 == 0 {
-				qc::get_tiles(&mut player.comque);
 				qc::assert_pos(&mut player.comque);
 				qc::get_stats(&mut player.comque);
 //				qc::add_chat_message(&mut player.comque, "test".to_string());
 			}
 			if i % 32 == 0 {
+				qc::get_tiles(&mut player.comque);
 				qc::get_entities(&mut player.comque);
 			}
 			let apio = &mut player_apio[player.pindex as usize];
 			player.game_step(apio, &mut canvas, &mut world_tiles);
 		}
+		if cam_tracks {
+			cam.0 = players[0].x;
+			cam.1 = players[0].y;
+		}
+		statbox::draw_world(&players, &mut canvas, &mut world_tiles, &cam, &texture, winwi, winhi);
 		i = i + 1;
-		::std::thread::sleep(Duration::new(0, 1000000000u32 / 32));
+		//println!("elapsed: {:?}", now.elapsed());
+		let steptime = Duration::new(0, 1000000000u32 / 32);
+		let functime = now.elapsed();
+		if functime < steptime {
+			std::thread::sleep(steptime - functime);
+		} else {
+			println!("long step time of {:?}", functime);
+		}
 	}
 	world_tiles.save_all();
 }
