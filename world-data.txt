@@ -24,18 +24,19 @@
 11886	-176	2021-03-05	origin east ubq323
 15701	-596		Wikitown
 16044	797		Boteram cave
+17137	-526	2022-05-03	origin east  melody
 -3557	-1100		WhileTrue Zone
-14132	12336		Boteram vertical 1
+14132	12336	2020-08-08	Boteram vertical 1
 15704	21858		Boteram vertical 2
 15678	29352	2021-05-24	Boteram vertical 3 by melody, a few days before 2021-05-24
 15669	33596		Boteram vertical 4
 15811	42440	2021-03-28	Boteram vertical deep bread
+15696	61392	2021-09-05	Boteram vertical A by melody
 15659	68653	2021-05-31	Boteram vertical 5 by melody
 15770	85222	2021-05-31	Boteram vertical 6 by melody
 15598	87249	2021-06-13	Boteram vertical 7 by melody
 15593	93143	2021-06-13	Boteram vertical 8 by melody
 14672	99938	2021-06-14	Boteram vertical 9 by melody
-15696	61392	2021-09-05	Boteram vertical A by melody
 9127	141		poggi big sex
 -102	850	2020-12-14?	origin down  ultlang
 950	-2419	2021-12-29	darxoon
