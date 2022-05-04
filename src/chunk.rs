@@ -17,7 +17,7 @@ impl Chunk {
 	}
 	// load chunk from file, generate if necessary
 	fn new_maybe_file(x: i32, y: i32) -> Self {
-		let f = File::open(format!("{}_{}.dat", x, y));
+		let f = File::open(format!("save/{}_{}.dat", x, y));
 		let mut chunk = Self::new_empty(x, y);
 		if let Ok(mut file) = f {
 			let mut buf: Vec<u8> = Vec::new();
@@ -137,7 +137,7 @@ impl Chunk {
 			buf.push(len);
 			buf.push(t);
 		}
-		let mut f = File::create(format!("{}_{}.dat", self.x, self.y)).unwrap();
+		let mut f = File::create(format!("save/{}_{}.dat", self.x, self.y)).unwrap();
 		f.write(&buf).unwrap();
 	}
 }
