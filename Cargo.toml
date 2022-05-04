@@ -8,21 +8,13 @@ edition = "2018"
 
 [dependencies]
 http = "0.2.5"
-websocket = "0.26.2"
-sdl2 = "0.35.1"
-webpki = "0.22.0"
-webpki-roots = "0.22.1"
-native-tls = "0.2.8"
+sdl2 = { version = "0.35.2", features = ["image"] }
+native-tls = "0.2"
 json = "^0"
-tokio = { version = "1.15.0", features = ["full"] }
-tokio-core = "0.1.18"
-tokio-tungstenite = { version = "0.16.1", features = ["native-tls"] }
-tokio-rustls = "0.23.2"
-rustls = "0.20.2"
-tungstenite = "0.16.0"
+tokio = { version = "1.18", features = ["full"] }
+tokio-tungstenite = { version = "0.16", features = ["native-tls"] }
+tungstenite = "0.16"
 futures = "0.3"
 futures-channel = "0.3"
 futures-util = { version = "0.3" }
-openssl = "0.10"
 url = "2.0.0"
-mio = { version = "0.8", features = ["os-poll", "net"] }

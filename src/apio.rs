@@ -1,11 +1,7 @@
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, WebSocketStream};
 use futures_util::{StreamExt, future, pin_mut, SinkExt, Sink};
-use mio::net::SocketAddr;
 use http::request::Request;
-use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-
-mod signin;
 
 pub struct Apioform {
 	ready: bool,
@@ -34,7 +30,7 @@ impl Apioform {
 		self.txup = Some(txup);
 		tokio::spawn(async move {
 			let url = url::Url::parse("wss://ostracodapps.com:2626/gameUpdate").unwrap();
-			let consid = signin::creds_to_consid(user, pass);
+			let consid = creds_to_consid(user, pass);
 			let mut request = Request::builder()
 			  .uri("wss://ostracodapps.com:2626/gameUpdate")
 			  .header("Cookie", consid)
@@ -118,3 +114,28 @@ impl Apioform {
 //	pub fn poll_next(&mut self) -> Option<String> {
 //	}
 //}
+
+
+pub fn creds_to_consid(user: String, pass: String) -> String {
+	use std::net::TcpStream;
+	use native_tls::TlsConnector;
+	use std::io::{Write, Read};
+	let connector = TlsConnector::new().unwrap();
+	let stream = TcpStream::connect("ostracodapps.com:2626").unwrap();
+	let mut stream = connector.connect("ostracodapps.com", stream).unwrap();
+	let clen = user.len() + pass.len() + 19;
+	let fstr = format!("POST /loginAction HTTP/1.1\r\nHost: ostracodapps.com\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\n\r\nusername={}&password={}\r\n", clen, user, pass);
+	println!("Sending post request");
+	stream.write_all(fstr.as_bytes()).unwrap();
+	println!("Waiting for post response");
+	let mut pt = Vec::new();
+	stream.read_to_end(&mut pt).unwrap();
+	let strig = String::from_utf8(pt).unwrap();
+	let considn = strig.find("set-cookie").unwrap() + 12;
+	let considm = &strig[considn..].find("\n").unwrap();
+	let concookie = (&strig[considn..considn+considm]).to_string();
+	let considm = &strig[considn..].find(";").unwrap();
+	let concookie = (&strig[considn..considn+considm]).to_string();
+	println!("Got post response, cookie {}", concookie);
+	concookie
+}
