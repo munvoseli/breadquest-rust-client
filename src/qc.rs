@@ -50,7 +50,7 @@ pub fn remove_tile(command_vec: &mut Vec<String>, dir: u8) {
 }
 
 pub fn place_green_tile(command_vec: &mut Vec<String>, dir: u8) {
-	command_vec.push(format!("{{\"commandName\":\"removeTile\",\"direction\":{},\"tile\":132}}", dir));
+	command_vec.push(format!("{{\"commandName\":\"placeTile\",\"direction\":{},\"tile\":132}}", dir));
 }
 
 pub fn initial_commands(command_vec: &mut Vec<String>) {

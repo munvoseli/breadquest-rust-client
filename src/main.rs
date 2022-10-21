@@ -112,10 +112,10 @@ fn lop() {
 				Event::KeyDown { keycode: Some(Keycode::K), .. } => { cam.1 -= 8; cam_tracks = false; },
 				Event::KeyDown { keycode: Some(Keycode::L), .. } => { cam.0 += 8; cam_tracks = false; },
 				Event::KeyDown { keycode: Some(Keycode::R), .. } => { cam.0 = 0; cam.1 = 0; cam_tracks = false; },
-				Event::KeyDown { keycode: Some(Keycode::W), .. } => { qc::remove_tile(&mut players[act_pli].comque, 0); },
-				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::remove_tile(&mut players[act_pli].comque, 1); },
-				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::remove_tile(&mut players[act_pli].comque, 2); },
-				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::remove_tile(&mut players[act_pli].comque, 3); },
+				Event::KeyDown { keycode: Some(Keycode::W), .. } => { qc::place_green_tile(&mut players[act_pli].comque, 0); },
+				Event::KeyDown { keycode: Some(Keycode::D), .. } => { qc::place_green_tile(&mut players[act_pli].comque, 1); },
+				Event::KeyDown { keycode: Some(Keycode::S), .. } => { qc::place_green_tile(&mut players[act_pli].comque, 2); },
+				Event::KeyDown { keycode: Some(Keycode::A), .. } => { qc::place_green_tile(&mut players[act_pli].comque, 3); },
 				Event::MouseMotion { x, y, .. } => {
 					act_pli = 0;//((x / 480) as usize) + ((y / 480) as usize) * 3;
 				},

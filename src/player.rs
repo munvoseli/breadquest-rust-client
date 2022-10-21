@@ -63,41 +63,70 @@ impl Player {
 		let i = (x + 33) + (y + 33) * 67;
 		self.walks_to[i as usize] = tile;
 	}
-	pub fn try_walk(&mut self, crx: i32, cry: i32, world_tiles: &mut WorldTiles) {
+	// [0] represents the last direction in the walk
+	// [len-1] represents the first direction in the walk
+	pub fn get_walk_to(&mut self, crx: i32, cry: i32, world_tiles: &mut WorldTiles) -> Vec<u8> {
 		let mut relx = crx;
 		let mut rely = cry;
 		self.generate_pathing(world_tiles);
-		let steps = self.get_walk_relpos(relx, rely);
+		let mut steps = self.get_walk_relpos(relx, rely);
 		let mut walks: Vec<u8> = Vec::new();
 		for i in 0..steps {
+			let mut localmin = true;
+			let otsep = self.get_walk_relpos(relx, rely);
 			for (x, y, d) in [(0,-1,2), (1,0,3), (0,1,0), (-1,0,1)] {
 				let tsep = self.get_walk_relpos(relx+x, rely+y);
-				if tsep < steps - i {
+				if tsep < otsep {
 					relx += x;
 					rely += y;
 					walks.push(d);
+					localmin = false;
 					break;
 				}
 			}
-		}
-		for i in 0..steps {
-			if let Some(d) = walks.pop() {
-				qc::walk(&mut self.comque, d);
+			if localmin { // should only happen if it's out of bounds somehow
+				break;
 			}
 		}
-		self.x += crx;
-		self.y += cry;
+		walks
+	}
+	pub fn try_walk(&mut self, crx: i32, cry: i32, world_tiles: &mut WorldTiles) {
+		let mut walks = self.get_walk_to(crx, cry, world_tiles);
+		if walks.len() * 2 > self.dwalks_left.into() || walks.len() == 0 {
+			return;
+		}
+		let tile = world_tiles.get_tile_at(self.x + crx, self.y + cry);
+		if tile >= 0x81 && tile <= 0x88 {
+			while walks.len() > 1 {
+				let d = walks.pop().unwrap();
+				qc::walk(&mut self.comque, d);
+			}
+			if let Some(d) = walks.pop() {
+				qc::remove_tile(&mut self.comque, d);
+				self.x += crx - [0, 1, 0, -1][d as usize];
+				self.y += cry - [-1, 0, 1, 0][d as usize];
+			}
+		} else {
+			while walks.len() > 0 {
+				let d = walks.pop().unwrap();
+				qc::walk(&mut self.comque, d);
+			}
+			self.x += crx;
+			self.y += cry;
+		}
 		qc::assert_pos(&mut self.comque);
 		qc::get_tiles(&mut self.comque);
 	}
 	pub fn generate_pathing(&mut self, world_tiles: &mut WorldTiles) {
 		let mut i = 0;
+		const WALKABLE: u8 = 255;
+		const UNWALK: u8 = 254;
 		for y in -33..=33 { for x in -33..=33 {
 			let tile = world_tiles.get_tile_at(self.x + x, self.y + y);
 			self.walks_to[i] = if
 				(tile > 0 && tile <= 0x80) ||
 				(tile >= 0x89 && tile <= 0x94)
-				{ 255 } else { 254 };
+				{ WALKABLE } else { UNWALK };
 			i = i + 1;
 		}}
 		self.set_walk_relpos(0, 0, 0);
@@ -111,9 +140,10 @@ impl Player {
 				let tile = self.get_walk_relpos(relx, rely);
 				for tup in [(0i32,-1i32),(1,0),(0,1),(-1,0)] {
 					let ntile = self.get_walk_relpos(relx+tup.0, rely+tup.1);
-					if ntile != 255 { continue; }
-					self.set_walk_relpos(relx+tup.0, rely+tup.1, tile + 1);
-					newcoords.push((coord.0 + tup.0, coord.1 + tup.1));
+					if ntile == WALKABLE {
+						self.set_walk_relpos(relx+tup.0, rely+tup.1, tile + 1);
+						newcoords.push((coord.0 + tup.0, coord.1 + tup.1));
+					}
 				}
 			}
 			if newcoords.len() == 0 {
@@ -130,88 +160,6 @@ impl Player {
 			}
 		}
 		false
-	}
-
-	pub fn draw(&self, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, world_tiles: &mut WorldTiles) {
-		let ssize: i32 = 60;
-		let shsize: i32 = ssize >> 1;
-		let cou = 60 * 8 * (self.pindex % 3);
-		let cov = 60 * 8 * (self.pindex / 3);
-		let camx = if self.rx == 0 && self.ry == 0 { self.x } else { self.rx };
-		let camy = if self.rx == 0 && self.ry == 0 { self.y } else { self.ry };
-		for y in 0..ssize {
-			for x in 0..ssize {
-				let tile = world_tiles.get_tile_at(camx + x - shsize, camy + y - shsize);
-				let mut r:u8;
-				let mut g:u8;
-				let mut b:u8;
-				let mut mul: f32;
-				if self.rx == 0 && self.ry == 0 {
-					mul = 5.0 / (self.get_walk_relpos(x - shsize, y - shsize) as f32 + 6.0) + 1.0 / 6.0;
-				} else {
-					mul = 1.0;
-				}
-				// 0x00         ???
-				// 0x21, 0x7f  +spri, reduced shading
-				// 0x80        +rect, shading
-				// 0x81  0x88   rect, no shading
-				// 0x89  0x90  +rect, shading
-				// 0x91  0x96  +spri, no shading
-				let draw_wbg = tile <= 0x80 || tile >= 0x89;
-				if tile == 0x80 || (tile >= 0x89 && tile <= 0x90) || (tile >= 0x21 && tile <= 0x7f) {
-					r = 255;
-					g = 255;
-					b = 255;
-				} else if tile >= 0x81 && tile <= 0x88 {
-					r = [255,255,255,  0,  0,  0,255,170][tile as usize - 0x81];
-					g = [  0,170,255,255,255,  0,  0,170][tile as usize - 0x81];
-					b = [  0,  0,  0,  0,255,255,255,170][tile as usize - 0x81];
-					mul = 0.75;
-				} else if tile >= 0x91 && tile <= 0x94 {
-					r = 255;
-					g = 255;
-					b = 255;
-					mul = 1.0;
-				} else {
-					r = tile;
-					b = tile;
-					g = tile;
-				}
-				r = (r as f32 * mul) as u8;
-				g = (g as f32 * mul) as u8;
-				b = (b as f32 * mul) as u8;
-				canvas.set_draw_color(Color::RGB(r,g,b));
-				let rct = sdl2::rect::Rect::new((x + 60 * (self.pindex % 3)) * 8, (y + 60 * (self.pindex / 3)) * 8, 8, 8);
-				canvas.fill_rect(Some(rct)).ok();
-				if tile >= 0x21 && tile <= 0x7f {
-					canvas.set_draw_color(Color::RGB(0,0,0));
-					let rct = sdl2::rect::Rect::new((x + 60 * (self.pindex % 3)) * 8 + 2, (y + 60 * (self.pindex / 3)) * 8 + 2, 4, 4);
-					canvas.fill_rect(Some(rct)).ok();
-					
-				}
-				if tile >= 0x89 && tile <= 0x90 {
-					let r = [255,255,255,  0,  0,  0,255,170][tile as usize - 0x89];
-					let g = [  0,170,255,255,255,  0,  0,170][tile as usize - 0x89];
-					let b = [  0,  0,  0,  0,255,255,255,170][tile as usize - 0x89];
-					canvas.set_draw_color(Color::RGB(r,g,b));
-					let rct = sdl2::rect::Rect::new((x + 60 * (self.pindex % 3)) * 8 + 2, (y + 60 * (self.pindex / 3)) * 8 + 2, 4, 4);
-					canvas.fill_rect(Some(rct)).ok();
-					
-				}
-			}
-		}
-		canvas.set_draw_color(Color::RGB(255,0,85));
-		for enemy in &self.enemies {
-			let relx = enemy.x - self.x;
-			let rely = enemy.y - self.y;
-			if relx.abs() < shsize && rely.abs() < shsize {
-				let r = sdl2::rect::Rect::new((relx + shsize + 60 * (self.pindex % 3)) * 8 + 1, ((rely + shsize + 60 * (self.pindex / 3))) * 8 + 1, 6, 6);
-				canvas.fill_rect(Some(r)).ok();
-			}
-		}
-		canvas.set_draw_color(Color::RGB(85,0,255));
-		let r = sdl2::rect::Rect::new(shsize * 8 + 1 + cou, shsize * 8 + 1 + cov, 6, 6);
-		canvas.fill_rect(Some(r)).ok();
 	}
 
 	pub fn try_step(&mut self, world_tiles: &mut WorldTiles, dir: u8, ox: i32, oy: i32) -> bool {
