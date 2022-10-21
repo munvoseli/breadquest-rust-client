@@ -41,13 +41,15 @@ pub struct Player {
 	pub dwalks_left: u8,
 	pub time_since_break: u8,
 	pub play_mode: u8, // manual / bore
+	pub apio: Apioform
 }
 
 impl Player {
-	pub fn new(user: String) -> Self {
+	pub fn new(apio: Apioform) -> Self {
 		Self {
 			pindex: 0, x: 0, y: 0, rx: 0, ry: 0, health: 0,
-			user: user, comque: Vec::new(), enemies: Vec::new(),
+			user: apio.user.clone(), comque: Vec::new(), enemies: Vec::new(),
+			apio: apio,
 			walks_to: [255; 67*67], dwalks_left: 64, play_mode: 0,
 			time_since_break: MAXTSB,
 		}
@@ -174,11 +176,11 @@ impl Player {
 		true
 	}
 
-	pub fn game_step_univ(&mut self, apio: &mut Apioform, world_tiles: &mut WorldTiles) {
+	pub async fn game_step_univ(&mut self, world_tiles: &mut WorldTiles) {
 		let mut recvcom: String = self.user.to_string();
 		let mut has_recv = false;
 		'message_loop: loop {
-			let vecstr = match apio.poll_next() {
+			let vecstr = match self.apio.poll_next().await {
 				Some(str) => str,
 				None => { break 'message_loop; }
 			};
@@ -250,8 +252,8 @@ impl Player {
 		}
 	}
 
-	pub fn game_step(&mut self, apio: &mut Apioform, world_tiles: &mut WorldTiles) {
-		self.game_step_univ(apio, world_tiles);
+	pub async fn game_step(&mut self, world_tiles: &mut WorldTiles) {
+		self.game_step_univ(world_tiles).await;
 		if self.play_mode == 0 { // manual single control
 		} else if self.play_mode >= 1 && self.play_mode <= 5 { // bore
 			self.game_step_bore(world_tiles);
@@ -265,7 +267,7 @@ impl Player {
 		if self.time_since_break < MAXTSB {
 			self.time_since_break += 1;
 		}
-		qc::send_commands(apio, &self.comque);
+		qc::send_commands(&mut self.apio, &self.comque).await;
 		self.comque = Vec::new();
 	}
 }

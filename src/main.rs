@@ -18,6 +18,7 @@ use std::io::{Write, Read, stdout};
 use crate::apio::Apioform as Apioform;
 use crate::chunk::WorldTiles as WorldTiles;
 use crate::player::Player;
+use std::sync::{Arc, Mutex};
 
 mod qc;
 mod apio;
@@ -38,7 +39,7 @@ pub struct Enemy { x: i32, y: i32, }
 #[tokio::main]
 async fn main() {
 	println!("Hello, world!"); // this is literally my hello cargo project and i am not removing this line
-	lop();
+	lop().await;
 }
 
 fn get_login_name() -> Vec<String> {
@@ -57,7 +58,7 @@ fn get_login_name() -> Vec<String> {
 	infvec.iter().map(|&x| String::from(x)).collect()
 }
 
-fn lop() {
+async fn lop() {
 //	let infostr = get_login_name();
 //	println!("Login info: {} {}", infostr.0, infostr.1);
 //	let tcpclient = login_socket(infostr.0, infostr.1);
@@ -75,31 +76,33 @@ fn lop() {
 
 	let mut i: i32 = 0;
 	let mut event_pump = sdl_context.event_pump().unwrap();
-	let mut players: Vec<Player> = Vec::new();
 	let infvec = get_login_name();
-	let mut player_apio: Vec<Apioform> = Vec::new();
+	let mut pending_players: Arc<Mutex<Vec<Apioform>>> = Arc::new(Mutex::new(Vec::new()));
+	let mut players: Vec<Player> = Vec::new();
 	let mut world_tiles = WorldTiles::new();
-	//world_tiles.load_all_file();
 	for i in 0..(infvec.len() / 2) {
 		let user = infvec[i * 2].to_string();
 		let pass = infvec[i * 2 + 1].to_string();
-		let mut apio = Apioform::new(user, pass);
-		apio.build();
-		player_apio.push(apio);
-		let mut player = Player::new(infvec[i * 2].to_string());
-		player.pindex = i as i32;
-		qc::initial_commands(&mut player.comque);
-		println!("Set up player {}", player.user);
-		players.push(player);
+		apio::add_connection_eventually(user, pass, &mut pending_players);
 	}
 	println!("hhh");
 	let mut pindex: i32 = 0;
 	let mut act_pli: usize = 0;
 	let mut cam = (0i32, 0i32);
-	let mut cam_tracks = true;
+	let mut cam_tracks = false;
 	'running: loop {
 		let now = std::time::Instant::now();
 		let now2 = std::time::Instant::now();
+		{
+			let mut pp = pending_players.lock().unwrap();
+			while let Some(apio) = pp.pop() {
+				let mut player = Player::new(apio);
+				player.pindex = players.len() as i32;
+				qc::initial_commands(&mut player.comque);
+				println!("Set up player {}", player.user);
+				players.push(player);
+			}
+		}
 		for event in event_pump.poll_iter() {
 			match event {
 				Event::Quit {..} |
@@ -167,8 +170,7 @@ fn lop() {
 				qc::get_tiles(&mut player.comque);
 				qc::get_entities(&mut player.comque);
 			}
-			let apio = &mut player_apio[player.pindex as usize];
-			player.game_step(apio, &mut world_tiles);
+			player.game_step(&mut world_tiles).await;
 		}
 		if cam_tracks {
 			cam.0 = players[0].x;

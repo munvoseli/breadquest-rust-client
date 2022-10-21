@@ -1,7 +1,7 @@
 use std::fmt;
 use crate::apio::Apioform as Apioform;
 
-pub fn send_commands(
+pub async fn send_commands(
 	apio: &mut Apioform,
 	command_vec: &Vec<String>
 	) {
@@ -14,7 +14,7 @@ pub fn send_commands(
 		comstr.push_str(command_vec[i].as_str());
 	}
 	comstr.push(']');
-	apio.send(comstr);
+	apio.send(comstr).await;
 }
 
 pub fn get_entities(command_vec: &mut Vec<String>) {
