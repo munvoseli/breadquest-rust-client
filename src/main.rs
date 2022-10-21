@@ -168,7 +168,7 @@ fn lop() {
 				qc::get_entities(&mut player.comque);
 			}
 			let apio = &mut player_apio[player.pindex as usize];
-			player.game_step(apio, &mut canvas, &mut world_tiles);
+			player.game_step(apio, &mut world_tiles);
 		}
 		if cam_tracks {
 			cam.0 = players[0].x;

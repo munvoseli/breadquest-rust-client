@@ -174,7 +174,7 @@ impl Player {
 		true
 	}
 
-	pub fn game_step(&mut self, apio: &mut Apioform, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, world_tiles: &mut WorldTiles) {
+	pub fn game_step_univ(&mut self, apio: &mut Apioform, world_tiles: &mut WorldTiles) {
 		let mut recvcom: String = self.user.to_string();
 		let mut has_recv = false;
 		'message_loop: loop {
@@ -183,7 +183,6 @@ impl Player {
 				None => { break 'message_loop; }
 			};
 			has_recv = false;
-			//println!("{:?}", vecstr);
 			let respdata = json::parse(&vecstr).unwrap();
 			for command in respdata["commandList"].members() {
 				let typ:&str = command["commandName"].as_str().unwrap();
@@ -216,41 +215,50 @@ impl Player {
 		if has_recv {
 			println!("{}", recvcom);
 		}
-		// if bore
-		if self.play_mode >= 1 && self.play_mode <= 5 {
-		for i in 0..1 {
-			if self.time_since_break < 18 {
-				break;
-			}
-			let ox: i32 = [5,  0,1,0,-1][self.play_mode as usize];
-			let oy: i32 = [5,  -1,0,1,0][self.play_mode as usize];
-			if self.time_since_break == 18 {
-				qc::walk(&mut self.comque, self.play_mode - 1);
-				self.dwalks_left -= 2;
-				self.x += ox;
-				self.y += oy;
-			}
-			let tile = world_tiles.get_tile_at(self.x+ox, self.y+oy);
-			if tile >= 0x81 && tile <= 0x88 {
-				qc::remove_tile(&mut self.comque, self.play_mode - 1);
-				world_tiles.set_tile_at(self.x+ox, self.y+oy, 2);
-				self.time_since_break = 0;
-				break;
-			}
-			while self.dwalks_left > 48 {
-				let success = self.try_step(world_tiles, self.play_mode - 1, ox, oy);
-				if !success {
-					break;
-				}
-			}
-			while self.is_near_enemy(8) && self.dwalks_left > 2 {
-				qc::walk(&mut self.comque, self.play_mode - 1);
-				self.dwalks_left = self.dwalks_left - 2;
-				self.x += ox;
-				self.y += oy;
+	}
+
+	pub fn game_step_bore(&mut self, world_tiles: &mut WorldTiles) {
+		if self.time_since_break < 18 {
+			return;
+		}
+		let ox: i32 = [5,  0,1,0,-1][self.play_mode as usize];
+		let oy: i32 = [5,  -1,0,1,0][self.play_mode as usize];
+		if self.time_since_break == 18 {
+			qc::walk(&mut self.comque, self.play_mode - 1);
+			self.dwalks_left -= 2;
+			self.x += ox;
+			self.y += oy;
+		}
+		let tile = world_tiles.get_tile_at(self.x+ox, self.y+oy);
+		if tile >= 0x81 && tile <= 0x88 {
+			qc::remove_tile(&mut self.comque, self.play_mode - 1);
+			world_tiles.set_tile_at(self.x+ox, self.y+oy, 2);
+			self.time_since_break = 0;
+			return;
+		}
+		while self.dwalks_left > 48 {
+			let success = self.try_step(world_tiles, self.play_mode - 1, ox, oy);
+			if !success {
+				return;
 			}
 		}
+		while self.is_near_enemy(8) && self.dwalks_left > 2 {
+			qc::walk(&mut self.comque, self.play_mode - 1);
+			self.dwalks_left = self.dwalks_left - 2;
+			self.x += ox;
+			self.y += oy;
 		}
+	}
+
+	pub fn game_step(&mut self, apio: &mut Apioform, world_tiles: &mut WorldTiles) {
+		self.game_step_univ(apio, world_tiles);
+		if self.play_mode == 0 { // manual single control
+		} else if self.play_mode >= 1 && self.play_mode <= 5 { // bore
+			self.game_step_bore(world_tiles);
+		} else if self.play_mode == 6 { // multi mode
+			
+		}
+		// closing stuffs
 		if self.dwalks_left < 64 {
 			self.dwalks_left = self.dwalks_left + 1;
 		}
@@ -259,6 +267,5 @@ impl Player {
 		}
 		qc::send_commands(apio, &self.comque);
 		self.comque = Vec::new();
-//		self.draw(canvas, world_tiles);
 	}
 }
