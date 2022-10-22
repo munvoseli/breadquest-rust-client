@@ -6,7 +6,6 @@ use std::sync::{Arc, Mutex};
 pub fn add_connection_eventually(user: String, pass: String, conns: &mut Arc<Mutex<Vec<Apioform>>>) {
 	let mut conns = conns.clone();
 	tokio::spawn(async move {
-		let url = url::Url::parse("wss://ostracodapps.com:2626/gameUpdate").unwrap();
 		let consid = creds_to_consid(&user, &pass);
 		let mut request = Request::builder()
 		  .uri("wss://ostracodapps.com:2626/gameUpdate")
@@ -14,10 +13,7 @@ pub fn add_connection_eventually(user: String, pass: String, conns: &mut Arc<Mut
 		  .body(()).unwrap();
 		let (mut ws, resp) = tokio_tungstenite::connect_async(request).await.expect("Can't connnect");
 		let (mut sink, mut stream) = ws.split();
-			println!("Got ws sink and stream, sending brackets");
 		sink.send(tungstenite::Message::Text("[]".to_string())).await.unwrap();
-			println!("Sent brackets");
-		//let h: u8 = stream;
 		let mut strs = Arc::new(Mutex::new(Vec::new()));
 		let mut strsc = strs.clone();
 		{
@@ -45,7 +41,7 @@ impl Apioform {
 	pub async fn send(&mut self, data: String) {
 		self.sink.send(tungstenite::Message::Text(data)).await.unwrap();
 	}
-	pub async fn poll_next(&mut self) -> Option<String> {
+	pub fn poll_next(&mut self) -> Option<String> {
 		let mut strs = self.strs.lock().unwrap();
 		if strs.len() > 0 {
 			let m = strs.remove(0);

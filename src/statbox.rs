@@ -43,7 +43,7 @@ pub fn mouse_to_world(
 	mouse: &(i32, i32),
 	cam: &(i32, i32),
 	ww: i32, wh: i32) -> (i32, i32) {
-	let mxr = mouse.0 - ww / 2;
+	let mxr = mouse.0 - ww / 3;
 	let myr = mouse.1 - wh / 2;
 	((mxr >> 3) + cam.0, (myr >> 3) + cam.1)
 }
@@ -137,6 +137,26 @@ pub fn draw_chunks(
 	}}
 }
 
+pub fn draw_login_states(
+	canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+	texture: &sdl2::render::Texture,
+	namevec: &Vec<String>,
+	login_states: &Vec<u8>,
+	x0: i32, boxwidth: u32, y0: i32, ydiff: i32
+) {
+	canvas.set_draw_color(Color::RGB(255,255,255));
+	let rct = sdl2::rect::Rect::new(
+		x0, y0, boxwidth,
+		ydiff as u32 * login_states.len() as u32);
+	canvas.fill_rect(Some(rct)).ok();
+	
+	for i in 0..login_states.len() {
+		draw_text(
+			canvas, texture,
+			&format!("{} {}", login_states[i], &namevec[2 * i]),
+			x0, y0 + ydiff * (i as i32) + ydiff/2 - 4);
+	}
+}
 
 pub fn draw_world(
 	players: &Vec<Player>,
@@ -146,17 +166,11 @@ pub fn draw_world(
 	texture: &sdl2::render::Texture,
 	ww: i32, wh: i32) {
 	let s = 8;
-	let x0 = cam.0 - ww / 2 / s;
-	let x2 = cam.0 + ww / 2 / s;
+	let x0 = cam.0 - ww / 3 / s;
+	let x2 = cam.0 + ww / 3 / s;
 	let y0 = cam.1 - wh / 2 / s;
 	let y2 = cam.1 + wh / 2 / s;
 	draw_chunks(canvas, world_tiles, texture, x0, y0, x2, y2);
-	for x in x0..x2 {
-	for y in y0..y2 {
-//		let tile = world_tiles.get_tile_at(x, y);
-//		draw_tile(tile, canvas, texture, (x - x0, y - y0));
-	}}
-	
 
 	{
 		canvas.set_draw_color(Color::RGB(255,255,255));

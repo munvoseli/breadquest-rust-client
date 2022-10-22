@@ -99,6 +99,7 @@ impl Player {
 		}
 		let tile = world_tiles.get_tile_at(self.x + crx, self.y + cry);
 		if tile >= 0x81 && tile <= 0x88 {
+			self.dwalks_left -= 2 * (walks.len() as u8);
 			while walks.len() > 1 {
 				let d = walks.pop().unwrap();
 				qc::walk(&mut self.comque, d);
@@ -109,6 +110,7 @@ impl Player {
 				self.y += cry - [-1, 0, 1, 0][d as usize];
 			}
 		} else {
+			self.dwalks_left -= 2 * walks.len() as u8;
 			while walks.len() > 0 {
 				let d = walks.pop().unwrap();
 				qc::walk(&mut self.comque, d);
@@ -180,7 +182,7 @@ impl Player {
 		let mut recvcom: String = self.user.to_string();
 		let mut has_recv = false;
 		'message_loop: loop {
-			let vecstr = match self.apio.poll_next().await {
+			let vecstr = match self.apio.poll_next() {
 				Some(str) => str,
 				None => { break 'message_loop; }
 			};
