@@ -195,6 +195,9 @@ pub fn draw_world(
 		draw_text(canvas, texture,
 			&format!("{}", player.user),
 			4, pi as i32 * 20 + 24);
+		pi += 1;
+	}
+	for player in players {
 		for enemy in &player.enemies {
 			let rct = sdl2::rect::Rect::new(
 				(enemy.x - x0) * s,
@@ -204,6 +207,5 @@ pub fn draw_world(
 				((0xa0 >> 4) << 3) as i32, 8, 8);
 			canvas.copy(texture, Some(srcrct), Some(rct)).unwrap();
 		}
-		pi += 1;
 	}
 }

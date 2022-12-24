@@ -4,6 +4,7 @@ use crate::qc;
 use crate::Enemy;
 use crate::apio::Apioform;
 
+
 fn cq_set_tiles(command: &json::JsonValue, world_tiles: &mut WorldTiles) {
 	let slen: i32 = command["size"].as_i32().unwrap();
 	let mut tilei = 0;
@@ -19,13 +20,16 @@ fn cq_set_tiles(command: &json::JsonValue, world_tiles: &mut WorldTiles) {
 }
 
 fn cq_add_entity(command: &json::JsonValue, enemies: &mut Vec<Enemy>) {
-	enemies.push(Enemy {
-		x: command["entityInfo"]["pos"]["x"].as_i32().unwrap(),
-		y: command["entityInfo"]["pos"]["y"].as_i32().unwrap(),
+	if command["entityInfo"]["className"].as_str().unwrap() == "Enemy" {
+		enemies.push(Enemy {
+			x: command["entityInfo"]["pos"]["x"].as_i32().unwrap(),
+			y: command["entityInfo"]["pos"]["y"].as_i32().unwrap(),
 		});
+	}
 }
 
 const MAXTSB: u8 = 64; // should only have to go up to like 16
+const DIRS: [(i32, i32, u8); 4] = [(0, -1, 0), (1, 0, 1), (0, 1, 2), (-1, 0, 3)];
 
 pub struct Player {
 	pub pindex: i32,
@@ -121,6 +125,21 @@ impl Player {
 		qc::assert_pos(&mut self.comque);
 		qc::get_tiles(&mut self.comque);
 	}
+
+	fn generate_enemy_zones(&mut self) {
+		const RA: i32 = 8;
+		const DI: i32 = RA * 2 + 1;
+		const ER: i32 = 5;
+		let mut buf = [0u8; DI as usize];
+		const SAFE: u8 = 0;
+		const UNSAFE: u8 = 1;
+		let midp = DI * RA + RA;
+		for enemy in &self.enemies {
+			let rx = enemy.x - self.x;
+			let ry = enemy.y - self.y;
+		}
+	}
+
 	pub fn generate_pathing(&mut self, world_tiles: &mut WorldTiles) {
 		let mut i = 0;
 		const WALKABLE: u8 = 255;
@@ -178,12 +197,18 @@ impl Player {
 		true
 	}
 
+	// find a route to a tile next to a breakable tile that does not have enemies near
+	fn find_suitable_walk(&mut self, world_tiles: &mut WorldTiles) -> Vec<u8> {
+		let mut buf = [0u8; 61*61];
+		vec![]
+	}
+
 	pub async fn game_step_univ(&mut self, world_tiles: &mut WorldTiles) {
 		let mut recvcom: String = self.user.to_string();
 		let mut has_recv = false;
 		'message_loop: loop {
 			let vecstr = match self.apio.poll_next() {
-				Some(str) => str,
+				Some(strr) => strr,
 				None => { break 'message_loop; }
 			};
 			has_recv = false;
@@ -213,6 +238,10 @@ impl Player {
 					self.health = command["health"].as_u8().unwrap();
 				} else if ty.eq("addChatMessage") {
 					println!("{}", command.dump());
+				} else if ty.eq("setInventory") {
+				} else if ty.eq("setRespawnPos") {
+				} else {
+					println!("{}", ty);
 				}
 			}
 		}

@@ -21,6 +21,10 @@ pub fn get_entities(command_vec: &mut Vec<String>) {
 	command_vec.push("{\"commandName\": \"getEntities\"}".to_string());
 }
 
+pub fn get_chat(command_vec: &mut Vec<String>) {
+	command_vec.push("{\"commandName\": \"getChatMessages\"}".to_string());
+}
+
 pub fn start_playing(command_vec: &mut Vec<String>) {
 	command_vec.push("{\"commandName\": \"startPlaying\"}".to_string());
 }

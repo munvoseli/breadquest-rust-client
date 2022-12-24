@@ -198,6 +198,12 @@ async fn lop() {
 			world_tiles.unload_unused(&players);
 		}
 
+		if players.len() > 0 {
+			let mut player = &mut players[0];
+			if i % 64 == 0 {
+				qc::get_chat(&mut player.comque);
+			}
+		}
 		// now do things for each player
 		for mut player in &mut players {
 			if i % 64 == 0 {
